@@ -32,9 +32,9 @@ _PLATFORM_MODULES: dict[str, str] = {
 }
 
 
-def create_provider(command: str) -> AutostartProvider:
+def create_provider(command: str | list[str], working_directory: str | None = None) -> AutostartProvider:
     """Create the platform autostart provider for the given launch command."""
     module_name = _PLATFORM_MODULES[platform_key()]
     module = importlib.import_module(module_name)
     factory = module.create_provider
-    return factory(command)
+    return factory(command, working_directory)

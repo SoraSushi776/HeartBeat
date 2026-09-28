@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import Callable
+from pathlib import Path
 
 from PySide6.QtCore import QMetaObject, QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -37,7 +39,7 @@ class WindowManager(QObject):
         self,
         config_store: ConfigStore,
         secret_store: SecretStore,
-        launch_command: str,
+        launch_command: str | list[str],
     ) -> None:
         super().__init__()
         self._config_store = config_store
@@ -82,7 +84,7 @@ class WindowManager(QObject):
         cls,
         config_store: ConfigStore,
         secret_store: SecretStore,
-        launch_command: str,
+        launch_command: str | list[str],
     ) -> WindowManager:
         """Create and register the process-wide window manager instance."""
         manager = cls(config_store, secret_store, launch_command)
@@ -358,7 +360,14 @@ class WindowManager(QObject):
         show_notification(self._translator.tr("message.notify_title"), f"{author}: {content}")
 
     def _sync_autostart(self) -> None:
-        provider = create_provider(self._launch_command)
+        arguments = self._launch_command
+        if isinstance(arguments, str):
+            provider = create_provider(arguments)
+        else:
+            working_dir = None
+            if not getattr(sys, "frozen", False):
+                working_dir = str(Path(__file__).resolve().parents[3])
+            provider = create_provider(arguments, working_dir)
         if self._config.autostart.enabled:
             provider.enable()
             return

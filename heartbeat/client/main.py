@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import subprocess
 import sys
 
 from PySide6.QtCore import QMetaObject, Qt, QThread
@@ -18,9 +20,24 @@ from heartbeat.logging_util import setup_logging
 logger = logging.getLogger(__name__)
 
 
+def launch_arguments() -> list[str]:
+    """Return argv used for autostart registration."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
+    return [sys.executable, "-m", "heartbeat.client.main"]
+
+
 def launch_command() -> str:
-    """Return the command line used for autostart registration."""
-    return f"{sys.executable} -m heartbeat.client.main"
+    """Return the shell command line used for autostart registration."""
+    return subprocess.list2cmdline(launch_arguments()) if os.name == "nt" else " ".join(
+        _shell_quote(part) for part in launch_arguments()
+    )
+
+
+def _shell_quote(value: str) -> str:
+    if not value or any(ch in value for ch in ' "\'\\$`'):
+        return "'" + value.replace("'", "'\"'\"'") + "'"
+    return value
 
 
 def run() -> None:
@@ -34,7 +51,7 @@ def run() -> None:
     config_store = ConfigStore(config_path())
     first_run = not config_store.exists()
     secret_store = JsonSecretStore(secrets_path())
-    manager = WindowManager.initialize(config_store, secret_store, launch_command())
+    manager = WindowManager.initialize(config_store, secret_store, launch_arguments())
     config = manager.config
     gate = PrivacyGate(config.privacy)
     collectors = create_collectors(

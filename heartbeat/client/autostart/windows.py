@@ -42,6 +42,9 @@ class WindowsAutostartProvider:
             return False
 
 
-def create_provider(command: str) -> WindowsAutostartProvider:
+def create_provider(command: str | list[str], working_directory: str | None = None) -> WindowsAutostartProvider:
     """Create the Windows autostart provider."""
-    return WindowsAutostartProvider(command)
+    if isinstance(command, str):
+        return WindowsAutostartProvider(command)
+    parts = [f'"{item}"' if " " in item else item for item in command]
+    return WindowsAutostartProvider(" ".join(parts))

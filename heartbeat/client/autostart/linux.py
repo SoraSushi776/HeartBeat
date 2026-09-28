@@ -50,6 +50,9 @@ class LinuxAutostartProvider:
         return "Hidden=true" not in content
 
 
-def create_provider(command: str) -> LinuxAutostartProvider:
+def create_provider(command: str | list[str], working_directory: str | None = None) -> LinuxAutostartProvider:
     """Create the Linux autostart provider."""
-    return LinuxAutostartProvider(command)
+    if isinstance(command, str):
+        return LinuxAutostartProvider(command)
+    parts = [f"'{item}'" if " " in item else item for item in command]
+    return LinuxAutostartProvider(" ".join(parts))
