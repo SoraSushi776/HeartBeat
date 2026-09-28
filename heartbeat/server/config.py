@@ -21,6 +21,7 @@ DEFAULT_DATA_DIR = Path("data")
 DEFAULT_SITE_TITLE = "HeartBeat"
 DEFAULT_SITE_TAGLINE = "个人主页与实时状态"
 DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
+DEFAULT_SITE_TAGS_TITLE = "标签"
 
 _settings_cache: Settings | None = None
 
@@ -99,18 +100,25 @@ def save_github_token(token: str, login: str | None = None) -> None:
     logger.info("GitHub token stored in secrets file")
 
 
-def load_site_settings() -> dict[str, str]:
+def load_site_settings() -> dict[str, Any]:
     """Return the stored site copy or protocol defaults when unset."""
     stored = _read_secrets_payload(get_settings().secrets_path()).get("site")
     data = stored if isinstance(stored, dict) else {}
+    tags_raw = data.get("tags")
+    tags = [str(item).strip() for item in tags_raw] if isinstance(tags_raw, list) else []
+    show_raw = data.get("show_heatmap")
+    show_heatmap = show_raw if isinstance(show_raw, bool) else True
     return {
         "title": _site_value(data, "title", DEFAULT_SITE_TITLE),
         "tagline": _site_value(data, "tagline", DEFAULT_SITE_TAGLINE),
         "process_title": _site_value(data, "process_title", DEFAULT_SITE_PROCESS_TITLE),
+        "show_heatmap": show_heatmap,
+        "tags_title": _site_value(data, "tags_title", DEFAULT_SITE_TAGS_TITLE),
+        "tags": [item for item in tags if item],
     }
 
 
-def save_site_settings(values: dict[str, str]) -> dict[str, str]:
+def save_site_settings(values: dict[str, Any]) -> dict[str, Any]:
     """Merge the given site copy fields into the secrets file and return the result."""
     settings = get_settings()
     payload = _read_secrets_payload(settings.secrets_path())

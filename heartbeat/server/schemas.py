@@ -315,6 +315,9 @@ class SiteOut(SQLModel):
     title: str = "HeartBeat"
     tagline: str = ""
     process_title: str = ""
+    show_heatmap: bool = True
+    tags_title: str = "标签"
+    tags: list[str] = Field(default_factory=list)
 
 
 class SiteUpdate(SQLModel):
@@ -323,8 +326,11 @@ class SiteUpdate(SQLModel):
     title: str | None = Field(default=None, min_length=1, max_length=80)
     tagline: str | None = Field(default=None, max_length=200)
     process_title: str | None = Field(default=None, min_length=1, max_length=80)
+    show_heatmap: bool | None = None
+    tags_title: str | None = Field(default=None, min_length=1, max_length=80)
+    tags: list[str] | None = None
 
-    @field_validator("title", "process_title")
+    @field_validator("title", "process_title", "tags_title")
     @classmethod
     def copy_must_not_be_blank(cls, value: str | None) -> str | None:
         """Reject blank site copy fields and trim their edges."""
@@ -340,6 +346,15 @@ class SiteUpdate(SQLModel):
     def tagline_trimmed(cls, value: str | None) -> str | None:
         """Trim tagline edges, allowing an empty result."""
         return None if value is None else value.strip()
+
+    @field_validator("tags")
+    @classmethod
+    def tags_normalized(cls, value: list[str] | None) -> list[str] | None:
+        """Trim tag texts and drop empties."""
+        if value is None:
+            return None
+        cleaned = [item.strip() for item in value]
+        return [item for item in cleaned if item][:32]
 
 
 

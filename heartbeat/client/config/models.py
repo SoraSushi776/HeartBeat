@@ -180,6 +180,7 @@ class UiConfig:
 DEFAULT_SITE_TITLE = "HeartBeat"
 DEFAULT_SITE_TAGLINE = "个人主页与实时状态"
 DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
+DEFAULT_SITE_TAGS_TITLE = "标签"
 
 
 @dataclass
@@ -187,6 +188,9 @@ class SiteConfig:
     title: str = DEFAULT_SITE_TITLE
     tagline: str = DEFAULT_SITE_TAGLINE
     process_title: str = DEFAULT_SITE_PROCESS_TITLE
+    show_heatmap: bool = True
+    tags_title: str = DEFAULT_SITE_TAGS_TITLE
+    tags: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SiteConfig:
@@ -194,6 +198,9 @@ class SiteConfig:
             title=_as_str(data.get("title"), DEFAULT_SITE_TITLE),
             tagline=_as_str(data.get("tagline"), DEFAULT_SITE_TAGLINE),
             process_title=_as_str(data.get("process_title"), DEFAULT_SITE_PROCESS_TITLE),
+            show_heatmap=_as_bool(data.get("show_heatmap"), True),
+            tags_title=_as_str(data.get("tags_title"), DEFAULT_SITE_TAGS_TITLE),
+            tags=_as_str_list(data.get("tags")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -201,6 +208,9 @@ class SiteConfig:
             "title": self.title,
             "tagline": self.tagline,
             "process_title": self.process_title,
+            "show_heatmap": self.show_heatmap,
+            "tags_title": self.tags_title,
+            "tags": list(self.tags),
         }
 
 

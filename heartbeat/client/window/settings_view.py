@@ -57,6 +57,9 @@ class SettingsView(QWidget):
         self._site_title_edit = QLineEdit()
         self._site_tagline_edit = QLineEdit()
         self._site_process_title_edit = QLineEdit()
+        self._site_tags_title_edit = QLineEdit()
+        self._site_tags_edit = QLineEdit()
+        self._site_show_heatmap = QCheckBox()
         self._save_button = QPushButton()
         self._cancel_button = QPushButton()
         self._background_button = QPushButton()
@@ -77,6 +80,8 @@ class SettingsView(QWidget):
         self._site_title_label = QLabel()
         self._site_tagline_label = QLabel()
         self._site_process_title_label = QLabel()
+        self._site_tags_title_label = QLabel()
+        self._site_tags_label = QLabel()
         self._build_layout()
         self.retranslate()
         self._save_button.clicked.connect(self._on_save)
@@ -110,6 +115,9 @@ class SettingsView(QWidget):
         self._site_title_edit.setText(config.site.title)
         self._site_tagline_edit.setText(config.site.tagline)
         self._site_process_title_edit.setText(config.site.process_title)
+        self._site_tags_title_edit.setText(config.site.tags_title)
+        self._site_tags_edit.setText(", ".join(config.site.tags))
+        self._site_show_heatmap.setChecked(config.site.show_heatmap)
 
     def retranslate(self) -> None:
         """Refresh all labels for the active language."""
@@ -130,6 +138,9 @@ class SettingsView(QWidget):
         self._site_title_label.setText(self._t.tr("settings.site_title"))
         self._site_tagline_label.setText(self._t.tr("settings.site_tagline"))
         self._site_process_title_label.setText(self._t.tr("settings.site_process_title"))
+        self._site_tags_title_label.setText(self._t.tr("settings.site_tags_title"))
+        self._site_tags_label.setText(self._t.tr("settings.site_tags"))
+        self._site_show_heatmap.setText(self._t.tr("settings.site_show_heatmap"))
         self._push_enabled.setText(self._t.tr("settings.enable_push"))
         self._collect_screenshot.setText(self._t.tr("settings.collect_screenshot"))
         self._collect_media.setText(self._t.tr("settings.collect_media"))
@@ -175,6 +186,11 @@ class SettingsView(QWidget):
         self._base.site.process_title = (
             self._site_process_title_edit.text().strip() or self._base.site.process_title
         )
+        self._base.site.tags_title = (
+            self._site_tags_title_edit.text().strip() or self._base.site.tags_title
+        )
+        self._base.site.tags = self._parse_whitelist(self._site_tags_edit.text())
+        self._base.site.show_heatmap = self._site_show_heatmap.isChecked()
 
     def _build_layout(self) -> None:
         root = QVBoxLayout(self)
@@ -225,7 +241,14 @@ class SettingsView(QWidget):
         form.addRow(self._site_title_label, self._site_title_edit)
         form.addRow(self._site_tagline_label, self._site_tagline_edit)
         form.addRow(self._site_process_title_label, self._site_process_title_edit)
+        form.addRow(self._site_tags_title_label, self._site_tags_title_edit)
+        form.addRow(self._site_tags_label, self._site_tags_edit)
+        form.addRow(self._site_show_heatmap)
         return self._site_group
+
+    def _parse_whitelist(self, text: str) -> list[str]:
+        parts = [item.strip() for item in text.replace(",", "\n").splitlines()]
+        return [item for item in parts if item]
 
     def _build_general_group(self) -> QGroupBox:
         form = QFormLayout(self._general_group)

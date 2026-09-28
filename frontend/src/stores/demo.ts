@@ -177,5 +177,8 @@ export function demoSite(): SiteInfo {
     title: "HeartBeat",
     tagline: "个人主页与实时状态",
     process_title: "TA的电脑上正在玩",
+    show_heatmap: true,
+    tags_title: "标签",
+    tags: ["音乐", "旅行", "摄影", "独立游戏"],
   }
 }

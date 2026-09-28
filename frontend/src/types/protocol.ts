@@ -120,6 +120,9 @@ export interface SiteInfo {
   title: string
   tagline: string
   process_title: string
+  show_heatmap: boolean
+  tags_title: string
+  tags: string[]
 }
 
 export interface ApiError {
