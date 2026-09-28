@@ -70,34 +70,36 @@ onMounted(() => {
 
 <template>
   <div class="page-bg" :style="backgroundStyle"></div>
-  <div class="page">
-    <header class="header">
-      <div>
-        <h1 class="brand">{{ siteTitle }}</h1>
-        <p class="muted tagline">{{ siteTagline }}</p>
-      </div>
-      <div class="header-actions">
-        <span v-if="store.demoMode.value" class="demo-badge">演示数据</span>
-        <button type="button" class="btn btn-ghost" @click="onThemeClick">{{ themeLabel }}</button>
-      </div>
-    </header>
-    <nav class="nav-tabs" aria-label="主导航">
-      <button
-        v-for="item in NAV_ITEMS"
-        :key="item.name"
-        type="button"
-        class="tab"
-        :class="{ 'is-active': route.name === item.name || route.path === item.path }"
-        @click="go(item.path)"
-      >
-        {{ item.title }}
-      </button>
-    </nav>
-    <main class="content">
-      <RouterView />
-    </main>
+  <div class="app-shell">
+    <div class="page">
+      <header class="header">
+        <div>
+          <h1 class="brand">{{ siteTitle }}</h1>
+          <p class="muted tagline">{{ siteTagline }}</p>
+        </div>
+        <div class="header-actions">
+          <span v-if="store.demoMode.value" class="demo-badge">演示数据</span>
+          <button type="button" class="btn btn-ghost" @click="onThemeClick">{{ themeLabel }}</button>
+        </div>
+      </header>
+      <nav class="nav-tabs" aria-label="主导航">
+        <button
+          v-for="item in NAV_ITEMS"
+          :key="item.name"
+          type="button"
+          class="tab"
+          :class="{ 'is-active': route.name === item.name || route.path === item.path }"
+          @click="go(item.path)"
+        >
+          {{ item.title }}
+        </button>
+      </nav>
+      <main class="content">
+        <RouterView />
+      </main>
+    </div>
+    <SiteFooter />
   </div>
-  <SiteFooter />
 </template>
 
 <style scoped>
@@ -113,10 +115,19 @@ onMounted(() => {
   background-attachment: fixed;
 }
 
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .page {
   max-width: var(--page-max);
+  width: 100%;
   margin: 0 auto;
   padding: var(--page-pad-y) var(--page-pad-x) 28px;
+  flex: 1 0 auto;
+  box-sizing: border-box;
 }
 
 .header {
