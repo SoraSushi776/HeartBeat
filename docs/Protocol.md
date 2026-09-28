@@ -316,9 +316,11 @@ SSE 实时推送。事件类型：
 
 ## 五、GitHub 缓存
 
+服务端定时抓取 GitHub 资料并缓存，前端不直连 GitHub。贡献热力图走 GitHub GraphQL `contributionsCollection`，需要个人访问令牌（PAT）。
+
 ### `GET /api/v1/github`
 
-返回服务端定时抓取的 GitHub 资料，前端不直连 GitHub。
+返回服务端定时抓取的 GitHub 资料，无需鉴权。
 
 ```json
 {
@@ -341,7 +343,51 @@ SSE 实时推送。事件类型：
 }
 ```
 
-`contributions.days` 为最近一年日粒度；`level` 为 0–4 热力等级。`fetched_ts` 为后台任务最近一次刷新时间。
+`contributions.days` 为最近一年日粒度；`level` 为 0–4 热力等级。`fetched_ts` 为后台任务最近一次刷新时间。`readme_html` 已在服务端做有限标签清洗，前端仍可二次 sanitize。缓存为空时 `data` 为 `{}`。
+
+### `POST /api/v1/github/token`
+
+客户端推送 GitHub PAT，鉴权 `X-API-Key`。token 只进服务端本地 `secrets.json`，不进 Git，不出现在任何响应里。
+
+#### 请求体
+
+```json
+{
+  "token": "ghp_xxx",
+  "login": "SoraSushi776"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `token` | string | 是 | GitHub PAT，最长 512 |
+| `login` | string \| null | 否 | 热力图目标用户，缺省沿用服务端配置 |
+
+#### 响应
+
+```json
+{
+  "ok": true,
+  "data": {
+    "configured": true,
+    "login": "SoraSushi776",
+    "updated_ts": 1761648000000
+  }
+}
+```
+
+写入成功后服务端立即排队一次缓存刷新，之后仍由 APScheduler 周期刷新。
+
+### 客户端字段
+
+客户端本地配置与密钥对应关系：
+
+| 位置 | 字段 | 说明 |
+|------|------|------|
+| `client.secrets.json` | `github_token` | GitHub PAT，0600 权限，与 `api_key` 同级 |
+| 主配置（可选） | `github_login` | 目标 GitHub 用户，默认 `SoraSushi776` |
+
+客户端保存设置后应调用 `POST /api/v1/github/token` 把 `github_token`（可带 `login`）推送到服务端，请求头带 `X-API-Key`。推送失败仅记日志，下次保存设置时重试。token 不写入心跳上报体。
 
 ## 六、版本与兼容
 

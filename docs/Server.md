@@ -112,6 +112,7 @@ app.include_router(status.router)
 | `CRUD /api/v1/diaries` | 日记 |
 | `CRUD /api/v1/friends` | 友链 |
 | `GET /api/v1/github` | 读 GitHub 缓存 |
+| `POST /api/v1/github/token` | 存客户端推送的 PAT，排队刷新缓存 |
 
 ### 状态组装
 
@@ -155,7 +156,7 @@ class Heartbeat(SQLModel, table=True):
 
 | 任务 | 触发 | 动作 |
 |------|------|------|
-| `github_cache` | 每 30 分钟 Interval | 拉 README 与贡献热力图，写缓存 |
+| `github_cache` | 每 30 分钟 Interval | 用 PAT 走 GraphQL 拉热力图，拉 README 并做有限标签清洗，写缓存 |
 | `cleanup` | 每日 04:00 Cron | 删超期心跳与对应截图文件 |
 
 ```python
@@ -178,10 +179,11 @@ async def require_api_key(key: str = Depends(api_key_header)) -> str:
 | 接口 | 鉴权 |
 |------|------|
 | POST /heartbeat、PUT /screenshot | 要 |
+| POST /github/token | 要 |
 | GET /status、/github、/diaries、/friends | 公开（内网单机） |
 | POST/PATCH/DELETE /diaries、/friends | 要 |
 
-密钥从环境变量或本地配置读，不进 Git。比较用 `secrets.compare_digest`。
+密钥从环境变量或本地配置读，不进 Git。比较用 `secrets.compare_digest`。GitHub PAT 由客户端推到 `POST /github/token`，落 `data/secrets.json`，响应与日志均不得回显。
 
 ## 数据保留
 
@@ -194,10 +196,11 @@ async def require_api_key(key: str = Depends(api_key_header)) -> str:
 | 项 | 来源 |
 |----|------|
 | `api_key` | 环境变量或 `secrets.json` |
+| `github_token` | 环境变量或 `secrets.json`，由 `POST /github/token` 写入 |
 | `database_url` | 默认 `sqlite:///./data.db` |
 | `heartbeat_retention_days` | 默认 90 |
 | `online_timeout_ms` | 默认 90000 |
-| `github_login` | 热力图目标用户 |
+| `github_login` | 热力图目标用户，`secrets.json` 或环境变量 |
 | `cors_origains` | 开发期 Vite 源 |
 
 ## 依赖

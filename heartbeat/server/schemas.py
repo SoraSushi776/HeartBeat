@@ -214,4 +214,19 @@ class GitHubCacheOut(SQLModel):
     fetched_ts: int = 0
 
 
+class GithubTokenIn(SQLModel):
+    """GitHub PAT push body from the client."""
+
+    token: str = Field(min_length=1, max_length=512)
+    login: str | None = Field(default=None, max_length=100)
+
+
+class GithubTokenOut(SQLModel):
+    """GitHub PAT push ack payload."""
+
+    configured: bool = True
+    login: str = ""
+    updated_ts: int = 0
+
+
 

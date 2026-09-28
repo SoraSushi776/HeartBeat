@@ -6,6 +6,7 @@ import logging
 import os
 import secrets
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +14,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = logging.getLogger(__name__)
 
 API_KEY_ENV = "HEARTBEAT_API_KEY"
+GITHUB_TOKEN_ENV = "HEARTBEAT_GITHUB_TOKEN"
+GITHUB_LOGIN_ENV = "HEARTBEAT_GITHUB_LOGIN"
 SECRETS_FILE_NAME = "secrets.json"
 DEFAULT_DATA_DIR = Path("data")
 
@@ -31,6 +34,7 @@ class Settings(BaseSettings):
     screenshot_retention_days: int = 7
     online_timeout_ms: int = 90_000
     github_login: str = ""
+    github_token: str = ""
     cors_origins: list[str] = Field(default_factory=list)
     host: str = "127.0.0.1"
     port: int = 8000
@@ -71,38 +75,62 @@ def load_settings() -> Settings:
     """Build settings from env vars then data secrets file."""
     settings = Settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    settings.api_key = _resolve_api_key(settings)
+    stored = _read_secrets_payload(settings.secrets_path())
+    settings.api_key = _resolve_api_key(settings, stored)
+    settings.github_token = _resolve_secret(GITHUB_TOKEN_ENV, "github_token", stored)
+    stored_login = _resolve_secret(GITHUB_LOGIN_ENV, "github_login", stored)
+    settings.github_login = stored_login or settings.github_login
     return settings
 
 
-def _resolve_api_key(settings: Settings) -> str:
+def save_github_token(token: str, login: str | None = None) -> None:
+    """Persist the GitHub PAT and optional login into the secrets file."""
+    settings = get_settings()
+    payload = _read_secrets_payload(settings.secrets_path())
+    payload["github_token"] = token
+    if login:
+        payload["github_login"] = login
+        settings.github_login = login
+    _write_secrets_payload(settings.secrets_path(), payload)
+    settings.github_token = token
+    logger.info("GitHub token stored in secrets file")
+
+
+def _resolve_secret(env_name: str, secrets_key: str, stored: dict[str, Any]) -> str:
+    """Read a secret from env first, then the secrets file."""
+    env_value = os.environ.get(env_name, "")
+    if env_value:
+        return env_value
+    value = stored.get(secrets_key, "")
+    return value if isinstance(value, str) else ""
+
+
+def _resolve_api_key(settings: Settings, stored: dict[str, Any]) -> str:
     """Read API key from env, then secrets file, else generate and persist one."""
     env_key = os.environ.get(API_KEY_ENV, "")
     if env_key:
         return env_key
-    path = settings.secrets_path()
-    stored = _read_secrets_file(path)
-    if stored:
-        return stored
+    existing = stored.get("api_key", "")
+    if isinstance(existing, str) and existing:
+        return existing
     generated = secrets.token_urlsafe(32)
-    _write_secrets_file(path, generated)
-    logger.info("API key generated and stored at %s", path)
+    _write_secrets_payload(settings.secrets_path(), {**stored, "api_key": generated})
+    logger.info("API key generated and stored at %s", settings.secrets_path())
     return generated
 
 
-def _read_secrets_file(path: Path) -> str:
-    """Return api_key from secrets file or empty string."""
+def _read_secrets_payload(path: Path) -> dict[str, Any]:
+    """Return the secrets file object or an empty dict when unreadable."""
     if not path.is_file():
-        return ""
+        return {}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         logger.warning("Secrets file unreadable: %s", path)
-        return ""
-    value = payload.get("api_key", "")
-    return value if isinstance(value, str) else ""
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
-def _write_secrets_file(path: Path, api_key: str) -> None:
-    """Persist api_key into secrets file."""
-    path.write_text(json.dumps({"api_key": api_key}, indent=2) + "\n", encoding="utf-8")
+def _write_secrets_payload(path: Path, payload: dict[str, Any]) -> None:
+    """Persist the secrets object to disk."""
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
