@@ -51,10 +51,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
-"%PIP%" install "winrt-Windows.Media.Control>=2.0.0"
+"%PY%" -m pip install --upgrade "winrt-runtime>=3.2.1" "winrt-Windows.Foundation>=3.2.1" "winrt-Windows.Media.Control>=2.0.0"
 if errorlevel 1 (
-  echo [WARN] winrt-Windows.Media.Control failed to install. Music capture will not work.
-  echo        Try: "%PIP%" install winrt-runtime "winrt-Windows.Media.Control"
+  echo [WARN] winrt packages failed to install. Music capture will not work.
+  echo        Try: "%PY%" -m pip install -U winrt-runtime winrt-Windows.Foundation winrt-Windows.Media.Control
 )
 
 "%PY%" -c "import PySide6,sys; print('PySide6', PySide6.__version__)"

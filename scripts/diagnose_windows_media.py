@@ -36,6 +36,14 @@ def main() -> int:
     try:
         payload = asyncio.run(_dump_sessions())
         print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+    except ModuleNotFoundError as exc:
+        print("Missing winrt package:", exc)
+        print(
+            "Install with:\n"
+            "  .venv-win\\Scripts\\python -m pip install -U "
+            "winrt-runtime winrt-Windows.Foundation winrt-Windows.Media.Control"
+        )
+        return 1
     except Exception:
         traceback.print_exc()
         print("RESULT: GSMTC query failed")
