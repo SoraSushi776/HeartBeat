@@ -1,4 +1,4 @@
-"""Synchronous HTTP client for diary and friend v1 endpoints."""
+"""Synchronous HTTP client for diary, friend and message v1 endpoints."""
 
 from __future__ import annotations
 
@@ -81,6 +81,10 @@ class ApiService:
         if login:
             payload["login"] = login
         return self._request("POST", "/github/token", json=payload)
+
+    def list_messages(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+        """Return the paged guestbook message list payload."""
+        return self._request("GET", f"/messages?limit={limit}&offset={offset}")
 
     def upload_background(self, data: bytes, content_type: str) -> dict[str, Any]:
         """Upload a site background image."""

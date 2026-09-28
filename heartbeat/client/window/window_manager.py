@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QMetaObject, QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from heartbeat.client.api import ApiService, ApiSettings
@@ -11,14 +11,17 @@ from heartbeat.client.autostart.base import create_provider
 from heartbeat.client.config.models import AppConfig
 from heartbeat.client.config.store import ConfigStore, SecretStore
 from heartbeat.client.i18n import Translator
+from heartbeat.client.notify import show_notification
 from heartbeat.client.window.main_window import MainWindow
 from heartbeat.client.window.setup_wizard import SetupWizard
 from heartbeat.client.worker.api import ApiWorker
+from heartbeat.client.worker.messages import MessageWorker
 
 logger = logging.getLogger(__name__)
 
 PAGE_DIARIES = 2
 PAGE_FRIENDS = 3
+PAGE_MESSAGES = 4
 
 
 class WindowManager(QObject):
@@ -50,12 +53,22 @@ class WindowManager(QObject):
                 self._config.server.timeout_seconds,
             )
         )
+        self._message_worker = MessageWorker(
+            ApiService(
+                self._config.server.base_url,
+                self._secret_store.load_api_key(),
+                self._config.server.timeout_seconds,
+            )
+        )
         self._api_thread = QThread()
         self._api_worker.moveToThread(self._api_thread)
+        self._message_worker.moveToThread(self._api_thread)
+        self._api_thread.started.connect(self._message_worker.start)
         self._api_thread.start()
         self._wire_window()
         self._wire_api()
         self.api_settings_changed.connect(self._api_worker.apply_settings)
+        self.api_settings_changed.connect(self._message_worker.apply_settings)
 
     @classmethod
     def instance(cls) -> WindowManager:
@@ -199,6 +212,7 @@ class WindowManager(QObject):
         loaders: dict[int, Callable[[], None]] = {
             PAGE_DIARIES: self._window.diary.load_requested.emit,
             PAGE_FRIENDS: self._window.friends.load_requested.emit,
+            PAGE_MESSAGES: self._window.messages.load_requested.emit,
         }
         loader = loaders.get(index)
         if loader is not None:
@@ -279,6 +293,20 @@ class WindowManager(QObject):
         self._api_worker.friend_write_failed.connect(friends.show_error)
         self._api_worker.friend_deleted.connect(friends.apply_friend_deleted)
         self._api_worker.friend_delete_failed.connect(friends.show_error)
+        messages = self._window.messages
+        messages.load_requested.connect(self._message_worker.refresh)
+        self._message_worker.messages_loaded.connect(messages.apply_messages)
+        self._message_worker.messages_failed.connect(messages.show_error)
+        self._message_worker.message_arrived.connect(self._on_message_arrived)
+
+    @Slot(object)
+    def _on_message_arrived(self, row: object) -> None:
+        """Show a system notification for a newly arrived guestbook message."""
+        payload = row if isinstance(row, dict) else {}
+        raw_author = str(payload.get("author") or "").strip()
+        author = raw_author or self._translator.tr("message.anonymous")
+        content = str(payload.get("content") or "")
+        show_notification(self._translator.tr("message.notify_title"), f"{author}: {content}")
 
     def _sync_autostart(self) -> None:
         provider = create_provider(self._launch_command)
@@ -289,6 +317,10 @@ class WindowManager(QObject):
 
     def shutdown(self) -> None:
         """Stop the API worker thread before application exit."""
+        if self._api_thread.isRunning():
+            QMetaObject.invokeMethod(
+                self._message_worker, "stop", Qt.ConnectionType.BlockingQueuedConnection
+            )
         self._api_thread.quit()
         self._api_thread.wait(3000)
 

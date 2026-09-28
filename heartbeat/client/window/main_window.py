@@ -19,12 +19,19 @@ from heartbeat.client.i18n import Translator
 from heartbeat.client.window.diagnostics_view import DiagnosticsView
 from heartbeat.client.window.diary_view import DiaryView
 from heartbeat.client.window.friends_view import FriendsView
+from heartbeat.client.window.message_view import MessageView
 from heartbeat.client.window.settings_view import SettingsView
 
 MAIN_WINDOW_WIDTH = 960
 MAIN_WINDOW_HEIGHT = 640
 NAV_WIDTH = 160
-NAV_KEYS: tuple[str, ...] = ("nav.settings", "nav.diagnostics", "nav.diaries", "nav.friends")
+NAV_KEYS: tuple[str, ...] = (
+    "nav.settings",
+    "nav.diagnostics",
+    "nav.diaries",
+    "nav.friends",
+    "nav.messages",
+)
 LANGUAGE_CODES: tuple[str, ...] = ("zh-CN", "en-US")
 LANGUAGE_LABELS: tuple[str, ...] = ("中文", "English")
 
@@ -51,6 +58,7 @@ class MainWindow(QMainWindow):
         self._diagnostics = DiagnosticsView(translator)
         self._diary = DiaryView(translator)
         self._friends = FriendsView(translator)
+        self._messages = MessageView(translator)
         self._language_menu = self.menuBar().addMenu("")
         self._language_actions: list = []
         self._build_layout()
@@ -65,6 +73,10 @@ class MainWindow(QMainWindow):
     @property
     def friends(self) -> FriendsView:
         return self._friends
+
+    @property
+    def messages(self) -> MessageView:
+        return self._messages
 
     @property
     def diagnostics(self) -> DiagnosticsView:
@@ -113,6 +125,7 @@ class MainWindow(QMainWindow):
         self._diagnostics.retranslate()
         self._diary.retranslate()
         self._friends.retranslate()
+        self._messages.retranslate()
 
     def is_visible(self) -> bool:
         """Return whether the main window is currently shown."""
@@ -134,6 +147,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._diagnostics)
         self._stack.addWidget(self._diary)
         self._stack.addWidget(self._friends)
+        self._stack.addWidget(self._messages)
         for key in NAV_KEYS:
             self._nav.addItem(QListWidgetItem(self._t.tr(key)))
         self._nav.setCurrentRow(0)
