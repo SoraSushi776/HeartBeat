@@ -1,0 +1,362 @@
+# Protocol — JSON 传输规范
+
+本文件定义客户端、服务端、前端之间的数据契约。改动本规范时必须同步更新三端代码。
+
+## 通用约定
+
+- 所有接口挂在 `/api/v1` 下。破坏性变更升版本号，不在 v1 内做不兼容修改。
+- 请求与响应均为 `application/json; charset=utf-8`，截图二进制走独立接口或 base64 字段，默认 WebP。
+- 时间戳一律为 UTC 毫秒整数（Unix epoch ms），字段名 `ts`。展示时区由前端处理。
+- 客户端上报鉴权：请求头 `X-API-Key: <key>`。密钥在服务端配置与客户端本地配置中各存一份，不进 Git。
+- 未知字段忽略，缺失可选字段按默认值处理。必填字段缺失返回 `400`。
+
+## 错误响应
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "invalid_payload",
+    "message": "field ts is required"
+  }
+}
+```
+
+| HTTP | code | 含义 |
+|------|------|------|
+| 400 | `invalid_payload` | 校验失败 |
+| 401 | `unauthorized` | API Key 错误或缺失 |
+| 404 | `not_found` | 资源不存在 |
+| 409 | `conflict` | 幂等冲突（可选） |
+| 413 | `payload_too_large` | 体积超限 |
+| 429 | `rate_limited` | 上报过于频繁 |
+
+## 一、心跳上报
+
+### `POST /api/v1/heartbeat`
+
+客户端周期性上报一条完整快照。服务端以 `ts` 为准落库，不信任到达时间。
+
+#### 请求体
+
+```json
+{
+  "ts": 1761648000000,
+  "client": {
+    "id": "desktop-main",
+    "platform": "macos",
+    "version": "0.1.0"
+  },
+  "system": {
+    "cpu_percent": 12.5,
+    "memory_percent": 48.2,
+    "load_avg": [2.1, 1.8, 1.6]
+  },
+  "media": {
+    "state": "playing",
+    "title": "Song Title",
+    "artist": "Artist Name",
+    "album": "Album Name",
+    "app": "Music",
+    "cover_url": "https://cdn.example.com/cover.webp",
+    "position_ms": 42500,
+    "duration_ms": 210000
+  },
+  "processes": [
+    { "name": "Code", "count": 3 },
+    { "name": "Safari", "count": 1 }
+  ],
+  "privacy": {
+    "screenshot": true,
+    "media": true,
+    "processes": true,
+    "system": true
+  }
+}
+```
+
+#### 字段说明
+
+**`ts`** 心跳时间，必填，UTC 毫秒。
+
+**`client`**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | string | 是 | 客户端稳定标识，配置生成 |
+| `platform` | string | 是 | `windows` / `macos` / `linux` |
+| `version` | string | 否 | 客户端版本号 |
+
+**`system`** 仅当 `privacy.system` 为 `true` 时必须完整；否则可省略或为 `null`。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `cpu_percent` | number | 0–100 |
+| `memory_percent` | number | 0–100 |
+| `load_avg` | number[3] | 1/5/15 分钟负载，Windows 下可为空数组 |
+
+**`media`** 仅当 `privacy.media` 为 `true` 时上报；无播放时 `state` 为 `idle`，其余字段可空。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `state` | string | `playing` / `paused` / `idle` |
+| `title` | string \| null | 歌名 |
+| `artist` | string \| null | 歌手 |
+| `album` | string \| null | 专辑 |
+| `app` | string \| null | 播放器名 |
+| `cover_url` | string \| null | 封面 URL，由服务端换存后的地址 |
+| `position_ms` | int \| null | 播放进度 |
+| `duration_ms` | int \| null | 总时长 |
+
+**`processes`** 仅当 `privacy.processes` 为 `true` 时上报。已按客户端白名单过滤。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | string | 应用显示名 |
+| `count` | int | 进程数，可选，默认 1 |
+
+**`privacy`** 反馈客户端各开关实际状态，服务端据此决定接受哪些子块，并供前端显示采集范围。开关关闭的子块即使出现在请求里也应被服务端忽略。
+
+#### 响应
+
+```json
+{
+  "ok": true,
+  "data": {
+    "received_ts": 1761648000123,
+    "screenshot_upload_url": "/api/v1/screenshot/desktop-main",
+    "screenshot_expires_in": 60
+  }
+}
+```
+
+`screenshot_upload_url` 仅当 `privacy.screenshot` 为 `true` 时返回。客户端随后 `PUT` 截图。
+
+### `PUT /api/v1/screenshot/{client_id}`
+
+上传一张模糊后的桌面快照。
+
+- `Content-Type: image/webp`
+- 请求体为原始 WebP 字节
+- 可选请求头 `X-Heartbeat-Ts` 对应心跳 `ts`
+- 体积上限建议 512 KB，超限 `413`
+- 响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "url": "/static/snapshots/desktop-main-latest.webp",
+    "ts": 1761648000000
+  }
+}
+```
+
+服务端可只保留最新一张与按天的历史快照，过期由定时任务清理。
+
+## 二、实时状态
+
+### `GET /api/v1/status`
+
+供 Web Dashboard 拉取。无需 API Key（只读公开状态），也可按部署环境关闭。
+
+#### 查询参数
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `client_id` | 配置的默认客户端 | 指定客户端 |
+
+#### 响应
+
+```json
+{
+  "ok": true,
+  "data": {
+    "online": true,
+    "last_heartbeat_ts": 1761648000000,
+    "client": {
+      "id": "desktop-main",
+      "platform": "macos",
+      "version": "0.1.0"
+    },
+    "system": {
+      "cpu_percent": 12.5,
+      "memory_percent": 48.2,
+      "load_avg": [2.1, 1.8, 1.6]
+    },
+    "media": {
+      "state": "playing",
+      "title": "Song Title",
+      "artist": "Artist Name",
+      "album": "Album Name",
+      "app": "Music",
+      "cover_url": "/static/covers/xxx.webp",
+      "position_ms": 42500,
+      "duration_ms": 210000
+    },
+    "processes": [
+      { "name": "Code", "count": 3 }
+    ],
+    "screenshot": {
+      "url": "/static/snapshots/desktop-main-latest.webp",
+      "ts": 1761647990000,
+      "width": 960,
+      "height": 540
+    },
+    "privacy": {
+      "screenshot": true,
+      "media": true,
+      "processes": true,
+      "system": true
+    }
+  }
+}
+```
+
+`online` 由服务端根据 `last_heartbeat_ts` 与阈值（建议 90 秒）计算，不落库。
+
+### `GET /api/v1/stream`（可选）
+
+SSE 实时推送。事件类型：
+
+| event | data |
+|-------|------|
+| `status` | 与 `GET /api/v1/status` 的 `data` 相同 |
+| `heartbeat` | 精简心跳（可不含截图） |
+| `snapshot` | 截图更新通知 `{ "client_id", "ts", "url" }` |
+
+单用户场景下前端优先短轮询 `GET /api/v1/status`（5–15 秒），SSE 作为增强。
+
+## 三、日记
+
+### 资源模型
+
+```json
+{
+  "id": 1,
+  "title": "标题",
+  "content": "正文，纯文本或 Markdown",
+  "mood": "calm",
+  "tags": ["life"],
+  "created_ts": 1761648000000,
+  "updated_ts": 1761648000000
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | int | 响应 | 自增主键 |
+| `title` | string | 是 | 最长 200 |
+| `content` | string | 是 | 正文 |
+| `mood` | string \| null | 否 | 情绪标签 |
+| `tags` | string[] | 否 | 标签列表 |
+| `created_ts` | int | 响应 | 创建时间 |
+| `updated_ts` | int | 响应 | 更新时间 |
+
+### 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/diaries` | 列表，支持 `?limit=&offset=&tag=` |
+| GET | `/api/v1/diaries/{id}` | 详情 |
+| POST | `/api/v1/diaries` | 新建，body 为上述模型去掉 `id`/时间戳 |
+| PATCH | `/api/v1/diaries/{id}` | 局部更新 |
+| DELETE | `/api/v1/diaries/{id}` | 删除 |
+
+列表响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "items": [],
+    "total": 0,
+    "limit": 20,
+    "offset": 0
+  }
+}
+```
+
+日记接口建议要求鉴权（写操作 `X-API-Key` 或前端登录），避免公开可写。
+
+## 四、友情链接
+
+### 资源模型
+
+```json
+{
+  "id": 1,
+  "name": "Name",
+  "url": "https://example.com",
+  "avatar_url": "https://example.com/avatar.png",
+  "description": "一句话介绍",
+  "sort": 10
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | int | 响应 | 自增主键 |
+| `name` | string | 是 | 显示名 |
+| `url` | string | 是 | 主页链接 |
+| `avatar_url` | string \| null | 否 | 头像 |
+| `description` | string \| null | 否 | 简介 |
+| `sort` | int | 否 | 排序权重，越小越靠前 |
+
+### 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/friends` | 列表，按 `sort` 升序 |
+| POST | `/api/v1/friends` | 新建 |
+| PATCH | `/api/v1/friends/{id}` | 更新 |
+| DELETE | `/api/v1/friends/{id}` | 删除 |
+
+前端只读列表可公开，写操作需 API Key。
+
+## 五、GitHub 缓存
+
+### `GET /api/v1/github`
+
+返回服务端定时抓取的 GitHub 资料，前端不直连 GitHub。
+
+```json
+{
+  "ok": true,
+  "data": {
+    "login": "SoraSushi776",
+    "name": "Sora",
+    "bio": "…",
+    "avatar_url": "…",
+    "html_url": "https://github.com/SoraSushi776",
+    "readme_html": "<article>…</article>",
+    "contributions": {
+      "total_last_year": 1234,
+      "days": [
+        { "date": "2025-01-01", "count": 3, "level": 1 }
+      ]
+    },
+    "fetched_ts": 1761648000000
+  }
+}
+```
+
+`contributions.days` 为最近一年日粒度；`level` 为 0–4 热力等级。`fetched_ts` 为后台任务最近一次刷新时间。
+
+## 六、版本与兼容
+
+- 客户端发送 `X-Client-Version` 可选头。
+- 服务端对已废弃字段在响应中保留一个次版本周期。
+- 新增字段不视为破坏性变更；删除或改义字段必须升 `/api/v2`。
+
+## 七、体积与频率
+
+| 项目 | 建议值 |
+|------|--------|
+| 心跳间隔 | 15–60 秒 |
+| 心跳体（不含截图） | < 16 KB |
+| 截图 | WebP，宽约 960–1280，模糊后 < 512 KB |
+| 状态轮询 | 5–15 秒 |
+| 状态响应 | < 32 KB |
+
+客户端在隐私开关全关时仍可只发存活心跳（`client` + `ts`），用于在线指示。
