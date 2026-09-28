@@ -25,11 +25,13 @@ class ConfigStoreTest(unittest.TestCase):
         self.assertTrue(config.client_id)
         config.server.base_url = "https://hb.example"
         config.process_whitelist = ["Code"]
+        config.setup_completed = True
         self._store.save(config)
         loaded = self._store.load()
         self.assertEqual(loaded.client_id, config.client_id)
         self.assertEqual(loaded.server.base_url, "https://hb.example")
         self.assertEqual(loaded.process_whitelist, ["Code"])
+        self.assertTrue(loaded.setup_completed)
 
     def test_bad_json_falls_back(self) -> None:
         path = self._tmp / "bad.json"

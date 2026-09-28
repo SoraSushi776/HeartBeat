@@ -46,15 +46,29 @@ def run() -> None:
     thread.started.connect(worker.run)
     worker.finished.connect(thread.quit)
     manager.config_saved.connect(worker.apply_config)
+    window = manager.main_window
+    worker.diagnostics_ready.connect(window.apply_diagnostics)
+    worker.push_succeeded.connect(window.record_push_success)
+    worker.push_failed.connect(window.record_push_failure)
+    window.diagnostics_refresh_requested.connect(
+        lambda: QMetaObject.invokeMethod(
+            worker, "collect_diagnostics", Qt.ConnectionType.QueuedConnection
+        )
+    )
     thread.start()
 
     def handle_quit() -> None:
         QMetaObject.invokeMethod(worker, "stop", Qt.ConnectionType.QueuedConnection)
         thread.wait(5000)
+        manager.shutdown()
         app.quit()
 
     tray = TrayController(on_open=manager.show_settings, on_quit=handle_quit)
+    tray.retranslate(config.ui.language)
+    manager.language_changed.connect(tray.retranslate)
     tray.show()
+    if first_run or not config.setup_completed:
+        manager.show_setup_wizard()
     if first_run or not config.ui.start_minimized:
         manager.show_settings()
 
@@ -62,6 +76,7 @@ def run() -> None:
     app.exec()
     thread.quit()
     thread.wait(3000)
+    manager.shutdown()
 
 
 if __name__ == "__main__":

@@ -20,12 +20,32 @@
 client/
 ├── main.py            入口与 QApplication
 ├── tray.py            系统托盘
-├── window/            配置主窗口与面板
+├── i18n.py            中英文字符串表与 Translator
+├── markdown.py        Markdown 子集转 HTML
+├── diagnostics.py     诊断快照模型与封面解码
+├── api.py             日记与友链 HTTP 服务
+├── setup.py           工具与系统权限检查
+├── window/            主窗口与各功能面板
+│   ├── main_window.py     宽窗口（导航 + 内容栈 + 语言菜单）
+│   ├── settings_view.py   设置面板
+│   ├── diagnostics_view.py 诊断面板
+│   ├── diary_view.py      日记编辑面板
+│   ├── friends_view.py    友链编辑面板
+│   ├── setup_wizard.py    初始化向导
+│   └── window_manager.py  窗口与 API 线程编排
 ├── worker/            采集与推送 Worker
 ├── config/            配置加载、校验、路径
 ├── autostart/         平台自启适配
 └── privacy.py         隐私门转发
 ```
+
+主窗口约 960x640，左侧导航（设置 / 诊断 / 日记 / 友链）+ 右侧内容栈。语言菜单切换 `ui.language` 后调用各面板 `retranslate` 刷新文案。
+
+初始化向导在首启或 `setup_completed=false` 时弹出，分工具、权限、服务端三页，完成后写入 `setup_completed=true`。
+
+诊断面板从 adapters 现场采集（走 CollectorWorker 的 `collect_diagnostics`，隐私门短路），显示音乐封面与元数据、进程标签、系统负载、最近推送结果。
+
+日记与友链面板走 `/api/v1/diaries` 与 `/api/v1/friends`，由 `ApiWorker` 在独立线程执行 HTTP，UI 只发信号。
 
 ## 应用骨架
 
@@ -117,6 +137,8 @@ QSettings 跨平台落点不一致（注册表/plist/ini），只作窗口几何
 
 ```json
 {
+  "client_id": "abc123def456",
+  "setup_completed": true,
   "server": {
     "base_url": "https://example.com",
     "timeout_seconds": 10

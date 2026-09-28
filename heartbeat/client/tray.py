@@ -7,6 +7,8 @@ from PySide6.QtCore import QObject
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
+from heartbeat.client.i18n import Translator
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,16 +37,24 @@ class TrayController(QObject):
         super().__init__()
         self._on_open = on_open
         self._on_quit = on_quit
+        self._translator = Translator()
         self._icon = QSystemTrayIcon(create_tray_icon())
         self._icon.setToolTip("HeartBeat")
         self._menu = QMenu()
-        self._open_action = QAction("Open Settings")
-        self._quit_action = QAction("Quit")
+        self._open_action = QAction()
+        self._quit_action = QAction()
         self._menu.addAction(self._open_action)
         self._menu.addAction(self._quit_action)
         self._icon.setContextMenu(self._menu)
         self._open_action.triggered.connect(self._handle_open)
         self._quit_action.triggered.connect(self._handle_quit)
+        self.retranslate(self._translator.language)
+
+    def retranslate(self, language: str) -> None:
+        """Refresh tray menu labels for the active language."""
+        self._translator.set_language(language)
+        self._open_action.setText(self._translator.tr("menu.open"))
+        self._quit_action.setText(self._translator.tr("menu.quit"))
 
     def show(self) -> None:
         """Show the tray icon."""

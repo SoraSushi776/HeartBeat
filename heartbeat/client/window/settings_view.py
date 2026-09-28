@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QPushButton,
     QSpinBox,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from heartbeat.client.config.models import AppConfig
+from heartbeat.client.i18n import Translator
 
 
 class SettingsView(QWidget):
@@ -24,20 +26,20 @@ class SettingsView(QWidget):
     save_requested = Signal(object, str)
     close_requested = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, translator: Translator) -> None:
         super().__init__()
+        self._t = translator
         self._base: AppConfig = AppConfig()
-        self.setWindowTitle("HeartBeat Settings")
         self._url_edit = QLineEdit()
         self._api_key_edit = QLineEdit()
         self._api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self._push_enabled = QCheckBox("Enable push")
+        self._push_enabled = QCheckBox()
         self._interval_spin = QSpinBox()
         self._interval_spin.setRange(5, 3600)
-        self._collect_screenshot = QCheckBox("Screenshot")
-        self._collect_media = QCheckBox("Media")
-        self._collect_processes = QCheckBox("Processes")
-        self._collect_system = QCheckBox("System load")
+        self._collect_screenshot = QCheckBox()
+        self._collect_media = QCheckBox()
+        self._collect_processes = QCheckBox()
+        self._collect_system = QCheckBox()
         self._blur_spin = QDoubleSpinBox()
         self._blur_spin.setRange(0.0, 100.0)
         self._blur_spin.setSingleStep(0.5)
@@ -47,12 +49,24 @@ class SettingsView(QWidget):
         self._quality_spin = QSpinBox()
         self._quality_spin.setRange(1, 100)
         self._whitelist_edit = QLineEdit()
-        self._whitelist_edit.setPlaceholderText("Code, Safari")
-        self._autostart_check = QCheckBox("Start at login")
-        self._start_minimized = QCheckBox("Start minimized to tray")
-        self._save_button = QPushButton("Save")
-        self._cancel_button = QPushButton("Close")
+        self._autostart_check = QCheckBox()
+        self._start_minimized = QCheckBox()
+        self._save_button = QPushButton()
+        self._cancel_button = QPushButton()
+        self._server_group = QGroupBox()
+        self._push_group = QGroupBox()
+        self._privacy_group = QGroupBox()
+        self._screenshot_group = QGroupBox()
+        self._general_group = QGroupBox()
+        self._url_label = QLabel()
+        self._api_key_label = QLabel()
+        self._interval_label = QLabel()
+        self._blur_label = QLabel()
+        self._scale_label = QLabel()
+        self._quality_label = QLabel()
+        self._whitelist_label = QLabel()
         self._build_layout()
+        self.retranslate()
         self._save_button.clicked.connect(self._on_save)
         self._cancel_button.clicked.connect(self.close_requested.emit)
 
@@ -73,6 +87,31 @@ class SettingsView(QWidget):
         self._whitelist_edit.setText(", ".join(config.process_whitelist))
         self._autostart_check.setChecked(config.autostart.enabled)
         self._start_minimized.setChecked(config.ui.start_minimized)
+
+    def retranslate(self) -> None:
+        """Refresh all labels for the active language."""
+        self._server_group.setTitle(self._t.tr("settings.server"))
+        self._push_group.setTitle(self._t.tr("settings.push"))
+        self._privacy_group.setTitle(self._t.tr("settings.privacy"))
+        self._screenshot_group.setTitle(self._t.tr("settings.screenshot"))
+        self._general_group.setTitle(self._t.tr("settings.general"))
+        self._url_label.setText(self._t.tr("settings.base_url"))
+        self._api_key_label.setText(self._t.tr("settings.api_key"))
+        self._interval_label.setText(self._t.tr("settings.interval"))
+        self._blur_label.setText(self._t.tr("settings.blur_radius"))
+        self._scale_label.setText(self._t.tr("settings.scale"))
+        self._quality_label.setText(self._t.tr("settings.quality"))
+        self._whitelist_label.setText(self._t.tr("settings.process_whitelist"))
+        self._push_enabled.setText(self._t.tr("settings.enable_push"))
+        self._collect_screenshot.setText(self._t.tr("settings.collect_screenshot"))
+        self._collect_media.setText(self._t.tr("settings.collect_media"))
+        self._collect_processes.setText(self._t.tr("settings.collect_processes"))
+        self._collect_system.setText(self._t.tr("settings.collect_system"))
+        self._autostart_check.setText(self._t.tr("settings.autostart"))
+        self._start_minimized.setText(self._t.tr("settings.start_minimized"))
+        self._whitelist_edit.setPlaceholderText(self._t.tr("settings.whitelist_placeholder"))
+        self._save_button.setText(self._t.tr("button.save"))
+        self._cancel_button.setText(self._t.tr("button.close"))
 
     def is_visible(self) -> bool:
         """Return whether the settings window is currently shown."""
@@ -121,40 +160,35 @@ class SettingsView(QWidget):
         root.addLayout(buttons)
 
     def _build_server_group(self) -> QGroupBox:
-        group = QGroupBox("Server")
-        form = QFormLayout(group)
-        form.addRow("Base URL", self._url_edit)
-        form.addRow("API Key", self._api_key_edit)
-        return group
+        form = QFormLayout(self._server_group)
+        form.addRow(self._url_label, self._url_edit)
+        form.addRow(self._api_key_label, self._api_key_edit)
+        return self._server_group
 
     def _build_push_group(self) -> QGroupBox:
-        group = QGroupBox("Push")
-        form = QFormLayout(group)
+        form = QFormLayout(self._push_group)
         form.addRow(self._push_enabled)
-        form.addRow("Interval (s)", self._interval_spin)
-        return group
+        form.addRow(self._interval_label, self._interval_spin)
+        return self._push_group
 
     def _build_privacy_group(self) -> QGroupBox:
-        group = QGroupBox("Privacy")
-        form = QFormLayout(group)
+        form = QFormLayout(self._privacy_group)
         form.addRow(self._collect_screenshot)
         form.addRow(self._collect_media)
         form.addRow(self._collect_processes)
         form.addRow(self._collect_system)
-        return group
+        return self._privacy_group
 
     def _build_screenshot_group(self) -> QGroupBox:
-        group = QGroupBox("Screenshot")
-        form = QFormLayout(group)
-        form.addRow("Blur radius", self._blur_spin)
-        form.addRow("Scale", self._scale_spin)
-        form.addRow("Quality", self._quality_spin)
-        return group
+        form = QFormLayout(self._screenshot_group)
+        form.addRow(self._blur_label, self._blur_spin)
+        form.addRow(self._scale_label, self._scale_spin)
+        form.addRow(self._quality_label, self._quality_spin)
+        return self._screenshot_group
 
     def _build_general_group(self) -> QGroupBox:
-        group = QGroupBox("General")
-        form = QFormLayout(group)
-        form.addRow("Process whitelist", self._whitelist_edit)
+        form = QFormLayout(self._general_group)
+        form.addRow(self._whitelist_label, self._whitelist_edit)
         form.addRow(self._autostart_check)
         form.addRow(self._start_minimized)
-        return group
+        return self._general_group

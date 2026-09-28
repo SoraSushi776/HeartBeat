@@ -180,6 +180,7 @@ class UiConfig:
 @dataclass
 class AppConfig:
     client_id: str = ""
+    setup_completed: bool = False
     server: ServerConfig = field(default_factory=ServerConfig)
     push: PushConfig = field(default_factory=PushConfig)
     privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
@@ -193,6 +194,7 @@ class AppConfig:
     def from_dict(cls, data: dict[str, Any]) -> AppConfig:
         return cls(
             client_id=_as_str(data.get("client_id"), ""),
+            setup_completed=_as_bool(data.get("setup_completed"), False),
             server=ServerConfig.from_dict(_section(data, "server")),
             push=PushConfig.from_dict(_section(data, "push")),
             privacy=PrivacyConfig.from_dict(_section(data, "privacy")),
@@ -206,6 +208,7 @@ class AppConfig:
     def to_dict(self) -> dict[str, Any]:
         return {
             "client_id": self.client_id,
+            "setup_completed": self.setup_completed,
             "server": self.server.to_dict(),
             "push": self.push.to_dict(),
             "privacy": self.privacy.to_dict(),

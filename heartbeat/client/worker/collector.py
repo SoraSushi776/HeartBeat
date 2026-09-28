@@ -10,6 +10,7 @@ from PySide6.QtCore import QObject, QTimer, Signal, Slot
 from heartbeat.adapters.platform import current_platform
 from heartbeat.client.config.models import AppConfig
 from heartbeat.client.config.store import SecretStore
+from heartbeat.client.diagnostics import DiagnosticsSnapshot, read_cover_bytes
 from heartbeat.client.privacy import PrivacyGate
 from heartbeat.client.worker.sources import CollectorBundle, create_collectors
 from heartbeat.protocol.models import (
@@ -32,6 +33,7 @@ class CollectorWorker(QObject):
     """Collect local state on a timer and push heartbeats to the server."""
 
     snapshot_ready = Signal(object)
+    diagnostics_ready = Signal(object)
     push_succeeded = Signal(float)
     push_failed = Signal(str, int)
     finished = Signal()
@@ -81,6 +83,19 @@ class CollectorWorker(QObject):
             self._timer.stop()
             return
         self._timer.start(self._interval_ms())
+
+    @Slot()
+    def collect_diagnostics(self) -> None:
+        """Emit a live local snapshot for the diagnostics panel."""
+        media = self._collect_media()
+        cover_url = media.cover_url if media else None
+        snapshot = DiagnosticsSnapshot(
+            media=media,
+            processes=self._collect_processes(),
+            system=self._collect_system(),
+            cover_bytes=read_cover_bytes(cover_url),
+        )
+        self.diagnostics_ready.emit(snapshot)
 
     def _interval_ms(self) -> int:
         return max(int(self._config.push.interval_seconds * 1000), 1000)
