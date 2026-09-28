@@ -34,12 +34,13 @@ def to_adapter_screenshot(config: ScreenshotConfig) -> AdapterScreenshotConfig:
 def create_collectors(
     process_whitelist: list[str],
     screenshot: ScreenshotConfig,
+    process_collect_all: bool = True,
 ) -> CollectorBundle:
     """Create platform collectors from heartbeat.adapters factories."""
     logger.info("Creating collectors via heartbeat.adapters")
     return CollectorBundle(
         screenshot=get_screenshot_adapter(to_adapter_screenshot(screenshot)),
         media=get_media_adapter(),
-        processes=get_process_adapter(process_whitelist),
+        processes=get_process_adapter(process_whitelist, collect_all=process_collect_all),
         system=get_system_adapter(),
     )

@@ -16,13 +16,13 @@ _FETCH_ATTRS = ("name", "exe", "cmdline", "status")
 
 
 class PsutilProcessAdapter:
-    """psutil 遍历进程并按白名单过滤聚合"""
+    """psutil 遍历进程并按规则过滤聚合"""
 
     def __init__(self, process_filter: ProcessFilter | None = None) -> None:
-        self._filter = process_filter or ProcessFilter()
+        self._filter = process_filter or ProcessFilter(collect_all=True)
 
     def collect(self, gate: PrivacyGate) -> list[ProcessInfo] | None:
-        """采集白名单进程，隐私关闭时返回 None"""
+        """采集进程，隐私关闭时返回 None"""
         if not gate.allow(Capability.PROCESSES):
             return None
         if not self._filter.enabled:

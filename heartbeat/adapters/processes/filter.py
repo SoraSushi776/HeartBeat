@@ -9,9 +9,68 @@ from collections.abc import Iterable, Sequence
 from heartbeat.protocol.models import ProcessInfo
 
 DEFAULT_EXCLUDE_PATTERNS: tuple[str, ...] = (
-    r".* Helper",
-    r".* Renderer",
+    r".* Helper.*",
+    r".*Helper$",
+    r".* Renderer.*",
+    r".*Worker.*",
+    r".*Service.*",
+    r".*Daemon$",
+    r".*Server$",
+    r".*Handler$",
+    r".*Compiler$",
+    r".*Agent.*",
+    r".*XPC.*",
+    r".*Plugin.*",
+    r".*Extension.*",
+    r".*Launcher$",
+    r".*Monitor$",
+    r".*Ingestor$",
+    r".*Intents$",
     r"crashpad_handler",
+    r".*com\.apple\..*",
+    r"kernel_task",
+    r"launchd",
+    r"loginwindow",
+    r"WindowServer",
+    r"distnoted",
+    r"cfprefsd",
+    r"opendirectoryd",
+    r"secd",
+    r"sharingd",
+    r"trustd",
+    r"nsurlsessiond",
+    r"nsurlstoraged",
+    r"hidd",
+    r"bluetoothd",
+    r"coreaudiod",
+    r"powerd",
+    r"syslogd",
+    r"UserEventAgent",
+    r"fseventsd",
+    r"mds_stores",
+    r"mdworker.*",
+    r"spotlight.*",
+    r"TimeMachine.*",
+    r"backupd.*",
+)
+
+_USER_APP_EXE_HINTS: tuple[str, ...] = (
+    "/Applications/",
+    ".app/Contents/MacOS/",
+    "\\AppData\\Local\\",
+    "C:\\Program Files",
+    "/opt/homebrew/",
+    "/usr/local/",
+)
+
+_SYSTEM_PATH_HINTS: tuple[str, ...] = (
+    "/System/",
+    "/usr/libexec/",
+    "/usr/sbin/",
+    "/usr/bin/",
+    "/Library/Apple/",
+    "/private/",
+    "/sbin/",
 )
 
 
@@ -41,25 +100,41 @@ def aggregate(names: Iterable[str]) -> list[ProcessInfo]:
 
 
 class ProcessFilter:
-    """进程白名单匹配器，空名单不采集"""
+    """进程匹配器，支持白名单或采集全部可见应用"""
 
     def __init__(
         self,
         patterns: Sequence[str] = (),
         exclude: Sequence[str] | None = None,
+        collect_all: bool = False,
     ) -> None:
         self._allow = tuple(re.compile(pattern) for pattern in patterns)
         exclude_patterns = DEFAULT_EXCLUDE_PATTERNS if exclude is None else exclude
         self._exclude = tuple(re.compile(pattern) for pattern in exclude_patterns)
+        self._collect_all = collect_all
 
     @property
     def enabled(self) -> bool:
-        """白名单非空时才采集"""
-        return bool(self._allow)
+        """白名单非空或 collect_all 时采集"""
+        return self._collect_all or bool(self._allow)
 
     def matches(self, name: str, exe: str | None, cmdline0: str | None) -> bool:
-        """三路 fullmatch 命中白名单且未命中排除表"""
+        """命中排除表则拒绝；collect_all 时只接受可见应用，否则需命中白名单"""
         candidates = candidate_names(name, exe, cmdline0)
         if any(pattern.fullmatch(item) for item in candidates for pattern in self._exclude):
             return False
+        if self._collect_all:
+            return self._looks_like_user_app(name, exe, cmdline0)
         return any(pattern.fullmatch(item) for item in candidates for pattern in self._allow)
+
+    def _looks_like_user_app(self, name: str, exe: str | None, cmdline0: str | None) -> bool:
+        paths = [item for item in (exe, cmdline0) if item]
+        if any(path.startswith(prefix) or prefix in path for path in paths for prefix in _SYSTEM_PATH_HINTS):
+            return False
+        blob = " ".join(part for part in (name, exe, cmdline0) if part)
+        if any(hint in blob for hint in _USER_APP_EXE_HINTS):
+            return True
+        if paths:
+            return False
+        clean = name.strip()
+        return bool(clean) and len(clean) <= 64 and clean[:1].isupper() and not clean.islower()

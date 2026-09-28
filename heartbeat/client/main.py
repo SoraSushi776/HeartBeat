@@ -37,7 +37,9 @@ def run() -> None:
     manager = WindowManager.initialize(config_store, secret_store, launch_command())
     config = manager.config
     gate = PrivacyGate(config.privacy)
-    collectors = create_collectors(config.process_whitelist, config.screenshot)
+    collectors = create_collectors(
+        config.process_whitelist, config.screenshot, config.process_collect_all
+    )
     worker = CollectorWorker(config, secret_store, gate, collectors)
     thread = QThread()
     worker.moveToThread(thread)

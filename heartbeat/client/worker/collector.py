@@ -74,7 +74,9 @@ class CollectorWorker(QObject):
         """Replace runtime config and restart scheduling when needed."""
         self._config = config
         self._gate.set_config(config.privacy)
-        self._collectors = create_collectors(config.process_whitelist, config.screenshot)
+        self._collectors = create_collectors(
+            config.process_whitelist, config.screenshot, config.process_collect_all
+        )
         if not config.push.enabled:
             self._timer.stop()
             return

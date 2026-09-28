@@ -185,6 +185,7 @@ class AppConfig:
     privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
     screenshot: ScreenshotConfig = field(default_factory=ScreenshotConfig)
     process_whitelist: list[str] = field(default_factory=list)
+    process_collect_all: bool = True
     autostart: AutostartConfig = field(default_factory=AutostartConfig)
     ui: UiConfig = field(default_factory=UiConfig)
 
@@ -197,6 +198,7 @@ class AppConfig:
             privacy=PrivacyConfig.from_dict(_section(data, "privacy")),
             screenshot=ScreenshotConfig.from_dict(_section(data, "screenshot")),
             process_whitelist=_as_str_list(data.get("process_whitelist")),
+            process_collect_all=_as_bool(data.get("process_collect_all"), True),
             autostart=AutostartConfig.from_dict(_section(data, "autostart")),
             ui=UiConfig.from_dict(_section(data, "ui")),
         )
@@ -209,6 +211,7 @@ class AppConfig:
             "privacy": self.privacy.to_dict(),
             "screenshot": self.screenshot.to_dict(),
             "process_whitelist": list(self.process_whitelist),
+            "process_collect_all": self.process_collect_all,
             "autostart": self.autostart.to_dict(),
             "ui": self.ui.to_dict(),
         }
