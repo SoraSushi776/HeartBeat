@@ -82,6 +82,10 @@ class ApiService:
             payload["login"] = login
         return self._request("POST", "/github/token", json=payload)
 
+    def update_site(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Push site title, tagline and process block copy to the server."""
+        return self._request("PUT", "/site", json=payload)
+
     def list_messages(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """Return the paged guestbook message list payload."""
         return self._request("GET", f"/messages?limit={limit}&offset={offset}")

@@ -155,6 +155,7 @@ class WindowManager(QObject):
         self.config_saved.emit(config, api_key, github_token, github_login)
         self.api_settings_changed.emit(self._api_settings(api_key))
         self._push_github_token(github_token, github_login)
+        self._push_site_settings(config)
         logger.info("Settings saved")
 
     @Slot()
@@ -185,6 +186,17 @@ class WindowManager(QObject):
             logger.info("GitHub token pushed to server")
         except Exception:
             logger.exception("GitHub token push failed")
+
+    def _push_site_settings(self, config: AppConfig) -> None:
+        """Upload site title, tagline and process title to the server after a local save."""
+        try:
+            service = ApiService.from_settings(
+                self._api_settings(self._secret_store.load_api_key())
+            )
+            service.update_site(config.site.to_dict())
+            logger.info("Site settings pushed to server")
+        except Exception:
+            logger.exception("Site settings push failed")
 
     @Slot(str, str)
     def _on_setup_finished(self, base_url: str, api_key: str) -> None:

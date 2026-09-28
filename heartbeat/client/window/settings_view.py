@@ -54,6 +54,9 @@ class SettingsView(QWidget):
         self._quality_spin.setRange(1, 100)
         self._autostart_check = QCheckBox()
         self._start_minimized = QCheckBox()
+        self._site_title_edit = QLineEdit()
+        self._site_tagline_edit = QLineEdit()
+        self._site_process_title_edit = QLineEdit()
         self._save_button = QPushButton()
         self._cancel_button = QPushButton()
         self._background_button = QPushButton()
@@ -61,6 +64,7 @@ class SettingsView(QWidget):
         self._push_group = QGroupBox()
         self._privacy_group = QGroupBox()
         self._screenshot_group = QGroupBox()
+        self._site_group = QGroupBox()
         self._general_group = QGroupBox()
         self._url_label = QLabel()
         self._api_key_label = QLabel()
@@ -70,6 +74,9 @@ class SettingsView(QWidget):
         self._blur_label = QLabel()
         self._scale_label = QLabel()
         self._quality_label = QLabel()
+        self._site_title_label = QLabel()
+        self._site_tagline_label = QLabel()
+        self._site_process_title_label = QLabel()
         self._build_layout()
         self.retranslate()
         self._save_button.clicked.connect(self._on_save)
@@ -100,6 +107,9 @@ class SettingsView(QWidget):
         self._quality_spin.setValue(config.screenshot.quality)
         self._autostart_check.setChecked(config.autostart.enabled)
         self._start_minimized.setChecked(config.ui.start_minimized)
+        self._site_title_edit.setText(config.site.title)
+        self._site_tagline_edit.setText(config.site.tagline)
+        self._site_process_title_edit.setText(config.site.process_title)
 
     def retranslate(self) -> None:
         """Refresh all labels for the active language."""
@@ -107,6 +117,7 @@ class SettingsView(QWidget):
         self._push_group.setTitle(self._t.tr("settings.push"))
         self._privacy_group.setTitle(self._t.tr("settings.privacy"))
         self._screenshot_group.setTitle(self._t.tr("settings.screenshot"))
+        self._site_group.setTitle(self._t.tr("settings.site"))
         self._general_group.setTitle(self._t.tr("settings.general"))
         self._url_label.setText(self._t.tr("settings.base_url"))
         self._api_key_label.setText(self._t.tr("settings.api_key"))
@@ -116,6 +127,9 @@ class SettingsView(QWidget):
         self._blur_label.setText(self._t.tr("settings.blur_radius"))
         self._scale_label.setText(self._t.tr("settings.scale"))
         self._quality_label.setText(self._t.tr("settings.quality"))
+        self._site_title_label.setText(self._t.tr("settings.site_title"))
+        self._site_tagline_label.setText(self._t.tr("settings.site_tagline"))
+        self._site_process_title_label.setText(self._t.tr("settings.site_process_title"))
         self._push_enabled.setText(self._t.tr("settings.enable_push"))
         self._collect_screenshot.setText(self._t.tr("settings.collect_screenshot"))
         self._collect_media.setText(self._t.tr("settings.collect_media"))
@@ -156,6 +170,11 @@ class SettingsView(QWidget):
         self._base.screenshot.quality = self._quality_spin.value()
         self._base.autostart.enabled = self._autostart_check.isChecked()
         self._base.ui.start_minimized = self._start_minimized.isChecked()
+        self._base.site.title = self._site_title_edit.text().strip() or self._base.site.title
+        self._base.site.tagline = self._site_tagline_edit.text().strip()
+        self._base.site.process_title = (
+            self._site_process_title_edit.text().strip() or self._base.site.process_title
+        )
 
     def _build_layout(self) -> None:
         root = QVBoxLayout(self)
@@ -163,6 +182,7 @@ class SettingsView(QWidget):
         root.addWidget(self._build_push_group())
         root.addWidget(self._build_privacy_group())
         root.addWidget(self._build_screenshot_group())
+        root.addWidget(self._build_site_group())
         root.addWidget(self._build_general_group())
         buttons = QHBoxLayout()
         buttons.addWidget(self._background_button)
@@ -199,6 +219,13 @@ class SettingsView(QWidget):
         form.addRow(self._scale_label, self._scale_spin)
         form.addRow(self._quality_label, self._quality_spin)
         return self._screenshot_group
+
+    def _build_site_group(self) -> QGroupBox:
+        form = QFormLayout(self._site_group)
+        form.addRow(self._site_title_label, self._site_title_edit)
+        form.addRow(self._site_tagline_label, self._site_tagline_edit)
+        form.addRow(self._site_process_title_label, self._site_process_title_edit)
+        return self._site_group
 
     def _build_general_group(self) -> QGroupBox:
         form = QFormLayout(self._general_group)

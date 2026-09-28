@@ -177,6 +177,33 @@ class UiConfig:
         return {"start_minimized": self.start_minimized, "language": self.language}
 
 
+DEFAULT_SITE_TITLE = "HeartBeat"
+DEFAULT_SITE_TAGLINE = "个人主页与实时状态"
+DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
+
+
+@dataclass
+class SiteConfig:
+    title: str = DEFAULT_SITE_TITLE
+    tagline: str = DEFAULT_SITE_TAGLINE
+    process_title: str = DEFAULT_SITE_PROCESS_TITLE
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SiteConfig:
+        return cls(
+            title=_as_str(data.get("title"), DEFAULT_SITE_TITLE),
+            tagline=_as_str(data.get("tagline"), DEFAULT_SITE_TAGLINE),
+            process_title=_as_str(data.get("process_title"), DEFAULT_SITE_PROCESS_TITLE),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "tagline": self.tagline,
+            "process_title": self.process_title,
+        }
+
+
 @dataclass
 class AppConfig:
     client_id: str = ""
@@ -189,6 +216,7 @@ class AppConfig:
     process_collect_all: bool = True
     autostart: AutostartConfig = field(default_factory=AutostartConfig)
     ui: UiConfig = field(default_factory=UiConfig)
+    site: SiteConfig = field(default_factory=SiteConfig)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AppConfig:
@@ -203,6 +231,7 @@ class AppConfig:
             process_collect_all=_as_bool(data.get("process_collect_all"), True),
             autostart=AutostartConfig.from_dict(_section(data, "autostart")),
             ui=UiConfig.from_dict(_section(data, "ui")),
+            site=SiteConfig.from_dict(_section(data, "site")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -217,4 +246,5 @@ class AppConfig:
             "process_collect_all": self.process_collect_all,
             "autostart": self.autostart.to_dict(),
             "ui": self.ui.to_dict(),
+            "site": self.site.to_dict(),
         }
