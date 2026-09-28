@@ -63,29 +63,66 @@ class WindowsMediaAdapter:
         if self._manager_cls is None:
             return MediaInfo()
         try:
-            info = asyncio.run(self._fetch())
+            info = self._run_fetch()
         except Exception:
             logger.exception("Windows media query failed")
             return MediaInfo()
         return self._clock.decorate(info)
 
+    def _run_fetch(self) -> MediaInfo:
+        try:
+            return asyncio.run(self._fetch())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self._fetch())
+            finally:
+                loop.close()
+
     async def _fetch(self) -> MediaInfo:
         manager = await self._manager_cls.request_async()
-        session = manager.get_current_session()
-        if session is None:
-            session = self._pick_session(manager)
-        if session is None:
-            return MediaInfo()
-        props = await session.try_get_media_properties_async()
-        info = session.get_playback_info()
-        timeline = session.get_timeline_properties()
+        candidates = []
+        current = manager.get_current_session()
+        if current is not None:
+            candidates.append(current)
+        try:
+            candidates.extend(item for item in (manager.get_sessions() or []) if item is not None)
+        except Exception:
+            logger.debug("get_sessions failed")
+        seen: set[str] = set()
+        ordered = []
+        for session in candidates:
+            key = str(id(session))
+            if key in seen:
+                continue
+            seen.add(key)
+            ordered.append(session)
+        logger.debug("GSMTC sessions: %d", len(ordered))
+        for session in ordered:
+            info = await self._read_session(session)
+            if info is not None:
+                return info
+        return MediaInfo()
+
+    async def _read_session(self, session: Any) -> MediaInfo | None:
+        try:
+            props = await session.try_get_media_properties_async()
+        except Exception as exc:
+            logger.debug("media properties failed: %s", exc)
+            return None
+        try:
+            info = session.get_playback_info()
+            timeline = session.get_timeline_properties()
+        except Exception:
+            logger.exception("playback info failed")
+            return None
         state = _STATE_MAP.get(_status_name(info.playback_status), MediaState.IDLE)
         title = (getattr(props, "title", None) or "").strip() or None
         artist = (getattr(props, "artist", None) or "").strip() or None
         album = (getattr(props, "album_title", None) or "").strip() or None
-        app_id = getattr(session, "source_app_user_model_id", "") or ""
+        app_id = str(getattr(session, "source_app_user_model_id", "") or "")
         if state is MediaState.IDLE and not title:
-            return MediaInfo()
+            return None
         return MediaInfo(
             state=state,
             title=title,
@@ -95,14 +132,6 @@ class WindowsMediaAdapter:
             position_ms=_timedelta_ms(getattr(timeline, "position", None)),
             duration_ms=_timedelta_ms(getattr(timeline, "end_time", None)),
         )
-
-    def _pick_session(self, manager: Any) -> Any | None:
-        try:
-            sessions = manager.get_sessions()
-        except Exception:
-            return None
-        candidates = list(sessions) if sessions else []
-        return candidates[0] if candidates else None
 
 
 def _friendly_app_name(app_id: str) -> str | None:
