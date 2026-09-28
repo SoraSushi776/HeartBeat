@@ -24,6 +24,8 @@ DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
 DEFAULT_SITE_TAGS_TITLE = "标签"
 DEFAULT_SITE_ICP_TEXT = "萌ICP备20263011号"
 DEFAULT_SITE_ICP_KEYWORD = "20263011"
+DEFAULT_GITHUB_OWNER = "SoraSushi776"
+DEFAULT_GITHUB_REPO = "HeartBeat"
 
 _settings_cache: Settings | None = None
 
@@ -122,6 +124,8 @@ def load_site_settings() -> dict[str, Any]:
         "show_icp": show_icp,
         "icp_text": _site_value(data, "icp_text", DEFAULT_SITE_ICP_TEXT),
         "icp_keyword": _site_value(data, "icp_keyword", DEFAULT_SITE_ICP_KEYWORD),
+        "github_owner": _site_value(data, "github_owner", DEFAULT_GITHUB_OWNER),
+        "github_repo": _site_value(data, "github_repo", DEFAULT_GITHUB_REPO),
     }
 
 

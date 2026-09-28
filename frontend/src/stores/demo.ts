@@ -183,5 +183,7 @@ export function demoSite(): SiteInfo {
     show_icp: true,
     icp_text: "萌ICP备20263011号",
     icp_keyword: "20263011",
+    github_owner: "SoraSushi776",
+    github_repo: "HeartBeat",
   }
 }

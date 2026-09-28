@@ -321,6 +321,8 @@ class SiteOut(SQLModel):
     show_icp: bool = False
     icp_text: str = ""
     icp_keyword: str = ""
+    github_owner: str = "SoraSushi776"
+    github_repo: str = "HeartBeat"
 
 
 class SiteUpdate(SQLModel):
@@ -335,6 +337,8 @@ class SiteUpdate(SQLModel):
     show_icp: bool | None = None
     icp_text: str | None = Field(default=None, max_length=80)
     icp_keyword: str | None = Field(default=None, max_length=64)
+    github_owner: str | None = Field(default=None, min_length=1, max_length=80)
+    github_repo: str | None = Field(default=None, min_length=1, max_length=120)
 
     @field_validator("title", "process_title", "tags_title")
     @classmethod
@@ -361,6 +365,21 @@ class SiteUpdate(SQLModel):
             return None
         cleaned = [item.strip() for item in value]
         return [item for item in cleaned if item][:32]
+
+    @field_validator("github_owner", "github_repo")
+    @classmethod
+    def github_slug(cls, value: str | None) -> str | None:
+        """Keep only GitHub-safe name characters and trim edges."""
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            raise ValueError("must not be empty")
+        allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        cleaned = "".join(ch for ch in text if ch in allowed)
+        if not cleaned:
+            raise ValueError("must contain valid github name characters")
+        return cleaned
 
 
 

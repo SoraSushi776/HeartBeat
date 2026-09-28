@@ -40,11 +40,39 @@ def _shell_quote(value: str) -> str:
     return value
 
 
+def _hide_dock_on_macos() -> None:
+    if sys.platform != "darwin":
+        return
+    try:
+        import ctypes
+
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.dylib")
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        objc.objc_msgSend.restype = ctypes.c_void_p
+        objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+
+        def send_void(receiver: int | None, selector: bytes, *args: int) -> int | None:
+            if not args:
+                return objc.objc_msgSend(receiver, objc.sel_registerName(selector))
+            objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            return objc.objc_msgSend(receiver, objc.sel_registerName(selector), args[0])
+
+        cls = objc.objc_getClass(b"NSApplication")
+        ns_app = send_void(cls, b"sharedApplication")
+        send_void(ns_app, b"setActivationPolicy:", 1)
+    except Exception:
+        logger.exception("macOS dock hide failed")
+
+
 def run() -> None:
     """Start the HeartBeat tray client application."""
     setup_logging()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    _hide_dock_on_macos()
     app.setOrganizationName("HeartBeat")
     app.setApplicationName("HeartBeatClient")
 

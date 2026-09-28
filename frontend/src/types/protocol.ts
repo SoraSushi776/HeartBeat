@@ -126,6 +126,8 @@ export interface SiteInfo {
   show_icp: boolean
   icp_text: string
   icp_keyword: string
+  github_owner: string
+  github_repo: string
 }
 
 export interface ApiError {

@@ -183,6 +183,8 @@ DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
 DEFAULT_SITE_TAGS_TITLE = "标签"
 DEFAULT_SITE_ICP_TEXT = "萌ICP备20263011号"
 DEFAULT_SITE_ICP_KEYWORD = "20263011"
+DEFAULT_GITHUB_OWNER = "SoraSushi776"
+DEFAULT_GITHUB_REPO = "HeartBeat"
 
 
 @dataclass
@@ -196,6 +198,8 @@ class SiteConfig:
     show_icp: bool = False
     icp_text: str = DEFAULT_SITE_ICP_TEXT
     icp_keyword: str = DEFAULT_SITE_ICP_KEYWORD
+    github_owner: str = DEFAULT_GITHUB_OWNER
+    github_repo: str = DEFAULT_GITHUB_REPO
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SiteConfig:
@@ -209,6 +213,8 @@ class SiteConfig:
             show_icp=_as_bool(data.get("show_icp"), False),
             icp_text=_as_str(data.get("icp_text"), DEFAULT_SITE_ICP_TEXT),
             icp_keyword=_as_str(data.get("icp_keyword"), DEFAULT_SITE_ICP_KEYWORD),
+            github_owner=_as_str(data.get("github_owner"), DEFAULT_GITHUB_OWNER),
+            github_repo=_as_str(data.get("github_repo"), DEFAULT_GITHUB_REPO),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -222,6 +228,8 @@ class SiteConfig:
             "show_icp": self.show_icp,
             "icp_text": self.icp_text,
             "icp_keyword": self.icp_keyword,
+            "github_owner": self.github_owner,
+            "github_repo": self.github_repo,
         }
 
 

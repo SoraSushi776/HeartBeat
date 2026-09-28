@@ -51,6 +51,8 @@ export class DashboardStore {
     show_icp: false,
     icp_text: "萌ICP备20263011号",
     icp_keyword: "20263011",
+    github_owner: "SoraSushi776",
+    github_repo: "HeartBeat",
   })
 
   private stream: StatusStream | null = null
@@ -90,6 +92,8 @@ export class DashboardStore {
         show_icp: data.show_icp === true,
         icp_text: data.icp_text || "萌ICP备20263011号",
         icp_keyword: data.icp_keyword || "20263011",
+        github_owner: data.github_owner || "SoraSushi776",
+        github_repo: data.github_repo || "HeartBeat",
       }
     } catch {
       return

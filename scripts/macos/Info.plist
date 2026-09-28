@@ -18,6 +18,8 @@
   <string>12.0</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>LSUIElement</key>
+  <true/>
   <key>NSScreenCaptureUsageDescription</key>
   <string>HeartBeat captures a blurred desktop snapshot for your personal dashboard.</string>
   <key>NSAppleEventsUsageDescription</key>

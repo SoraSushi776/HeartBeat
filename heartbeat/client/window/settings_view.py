@@ -63,6 +63,9 @@ class SettingsView(QWidget):
         self._site_show_icp = QCheckBox()
         self._site_icp_text_edit = QLineEdit()
         self._site_icp_keyword_edit = QLineEdit()
+        self._site_github_owner_edit = QLineEdit()
+        self._site_github_repo_edit = QLineEdit()
+        self._site_github_prefix = QLabel("https://github.com/")
         self._save_button = QPushButton()
         self._cancel_button = QPushButton()
         self._background_button = QPushButton()
@@ -87,6 +90,7 @@ class SettingsView(QWidget):
         self._site_tags_label = QLabel()
         self._site_icp_text_label = QLabel()
         self._site_icp_keyword_label = QLabel()
+        self._site_github_label = QLabel()
         self._build_layout()
         self.retranslate()
         self._save_button.clicked.connect(self._on_save)
@@ -126,6 +130,8 @@ class SettingsView(QWidget):
         self._site_show_icp.setChecked(config.site.show_icp)
         self._site_icp_text_edit.setText(config.site.icp_text)
         self._site_icp_keyword_edit.setText(config.site.icp_keyword)
+        self._site_github_owner_edit.setText(config.site.github_owner)
+        self._site_github_repo_edit.setText(config.site.github_repo)
 
     def retranslate(self) -> None:
         """Refresh all labels for the active language."""
@@ -152,6 +158,8 @@ class SettingsView(QWidget):
         self._site_show_icp.setText(self._t.tr("settings.site_show_icp"))
         self._site_icp_text_label.setText(self._t.tr("settings.site_icp_text"))
         self._site_icp_keyword_label.setText(self._t.tr("settings.site_icp_keyword"))
+        self._site_github_label.setText(self._t.tr("settings.site_github"))
+        self._site_github_prefix.setText("https://github.com/")
         self._push_enabled.setText(self._t.tr("settings.enable_push"))
         self._collect_screenshot.setText(self._t.tr("settings.collect_screenshot"))
         self._collect_media.setText(self._t.tr("settings.collect_media"))
@@ -209,6 +217,12 @@ class SettingsView(QWidget):
         self._base.site.icp_keyword = (
             self._site_icp_keyword_edit.text().strip() or self._base.site.icp_keyword
         )
+        self._base.site.github_owner = (
+            self._site_github_owner_edit.text().strip() or self._base.site.github_owner
+        )
+        self._base.site.github_repo = (
+            self._site_github_repo_edit.text().strip() or self._base.site.github_repo
+        )
 
     def _build_layout(self) -> None:
         root = QVBoxLayout(self)
@@ -265,6 +279,12 @@ class SettingsView(QWidget):
         form.addRow(self._site_show_icp)
         form.addRow(self._site_icp_text_label, self._site_icp_text_edit)
         form.addRow(self._site_icp_keyword_label, self._site_icp_keyword_edit)
+        repo_row = QHBoxLayout()
+        repo_row.addWidget(self._site_github_prefix)
+        repo_row.addWidget(self._site_github_owner_edit)
+        repo_row.addWidget(QLabel("/"))
+        repo_row.addWidget(self._site_github_repo_edit)
+        form.addRow(self._site_github_label, repo_row)
         return self._site_group
 
     def _parse_whitelist(self, text: str) -> list[str]:
