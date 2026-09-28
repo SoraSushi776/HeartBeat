@@ -43,7 +43,7 @@ echo === Step 1: core runtime deps ===
 "%PIP%" install --upgrade pip setuptools wheel
 if errorlevel 1 exit /b 1
 
-echo === Step 2: install heartbeat + PySide6 ===
+echo === Step 2: install heartbeat + PySide6 + winrt ===
 "%PIP%" install -e ".[client]"
 if errorlevel 1 (
   echo [FAIL] project deps failed. If PySide6 has no wheel for this Python/arch,
@@ -51,10 +51,22 @@ if errorlevel 1 (
   exit /b 1
 )
 
+"%PIP%" install "winrt-Windows.Media.Control>=2.0.0"
+if errorlevel 1 (
+  echo [WARN] winrt-Windows.Media.Control failed to install. Music capture will not work.
+  echo        Try: "%PIP%" install winrt-runtime "winrt-Windows.Media.Control"
+)
+
 "%PY%" -c "import PySide6,sys; print('PySide6', PySide6.__version__)"
 if errorlevel 1 (
   echo [FAIL] PySide6 not importable after install.
   exit /b 1
+)
+
+"%PY%" -c "import winrt.windows.media.control as m; print('winrt media ok')"
+if errorlevel 1 (
+  echo [WARN] winrt media API still missing. Install manually:
+  echo        .venv-win\Scripts\pip install winrt-Windows.Media.Control
 )
 
 echo === Step 3: packaging tools ===
