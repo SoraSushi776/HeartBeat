@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject
-from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from heartbeat.client.i18n import Translator
 
 logger = logging.getLogger(__name__)
+
+_IS_MACOS = sys.platform == "darwin"
 
 
 def create_tray_icon() -> QIcon:
@@ -27,7 +30,7 @@ def create_tray_icon() -> QIcon:
 
 
 class TrayController(QObject):
-    """System tray icon with open and quit actions."""
+    """System tray icon: left click restores the window, right click opens the menu."""
 
     def __init__(
         self,
@@ -45,9 +48,11 @@ class TrayController(QObject):
         self._quit_action = QAction()
         self._menu.addAction(self._open_action)
         self._menu.addAction(self._quit_action)
-        self._icon.setContextMenu(self._menu)
         self._open_action.triggered.connect(self._handle_open)
         self._quit_action.triggered.connect(self._handle_quit)
+        self._icon.activated.connect(self._handle_activated)
+        if not _IS_MACOS:
+            self._icon.setContextMenu(self._menu)
         self.retranslate(self._translator.language)
 
     def retranslate(self, language: str) -> None:
@@ -69,6 +74,21 @@ class TrayController(QObject):
     def notify(self, title: str, message: str) -> None:
         """Show a tray notification bubble."""
         self._icon.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information)
+
+    def _handle_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        restore = {
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+            QSystemTrayIcon.ActivationReason.MiddleClick,
+        }
+        if reason in restore:
+            self._handle_open()
+            return
+        if reason == QSystemTrayIcon.ActivationReason.Context and _IS_MACOS:
+            self._popup_menu()
+
+    def _popup_menu(self) -> None:
+        self._menu.exec(QCursor.pos())
 
     def _handle_open(self) -> None:
         self._on_open()
