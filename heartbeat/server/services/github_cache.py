@@ -189,7 +189,8 @@ def parse_contributions(html: str) -> dict[str, Any]:
 
 def parse_graphql_contributions(body: dict[str, Any]) -> dict[str, Any]:
     """Map a contributionsCollection GraphQL response into heatmap days."""
-    user = body.get("user") or {}
+    root = body.get("data") if isinstance(body.get("data"), dict) else body
+    user = (root or {}).get("user") or {}
     collection = user.get("contributionsCollection") or {}
     calendar = collection.get("contributionCalendar") or {}
     days: list[dict[str, Any]] = []

@@ -88,12 +88,12 @@ class ApiService:
 
     def upload_background(self, data: bytes, content_type: str) -> dict[str, Any]:
         """Upload a site background image."""
-        url = f"{self._base_url()}{API_PREFIX}/background"
+        url = f"{self._base_url}{API_PREFIX}/background"
         try:
             response = httpx.put(
                 url,
                 content=data,
-                headers={**self._headers(), "Content-Type": content_type},
+                headers={HEADER_API_KEY: self._api_key, "Content-Type": content_type},
                 timeout=max(self._timeout, 30.0),
             )
             response.raise_for_status()

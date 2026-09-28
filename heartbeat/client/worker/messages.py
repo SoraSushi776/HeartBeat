@@ -11,7 +11,7 @@ from heartbeat.client.api import ApiError, ApiService, ApiSettings
 
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_MS = 60_000
+POLL_INTERVAL_MS = 8_000
 FETCH_LIMIT = 50
 
 

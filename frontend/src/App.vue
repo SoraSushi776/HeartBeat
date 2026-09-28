@@ -1,34 +1,23 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
-import LiveStatus from "./components/LiveStatus.vue"
-import MediaCard from "./components/MediaCard.vue"
-import ProcessCloud from "./components/ProcessCloud.vue"
-import SnapshotLightbox from "./components/SnapshotLightbox.vue"
-import GithubPanel from "./components/GithubPanel.vue"
-import Heatmap from "./components/Heatmap.vue"
-import DiaryTimeline from "./components/DiaryTimeline.vue"
-import FriendLinks from "./components/FriendLinks.vue"
-import MessageBoard from "./components/MessageBoard.vue"
+import { computed, onMounted, ref } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import { NAV_ITEMS } from "./router"
 import { useDashboard, useDashboardLifecycle } from "./stores/dashboard"
 import { resolveAssetUrl } from "./utils/url"
 
 const store = useDashboard()
 useDashboardLifecycle(store)
 
+const route = useRoute()
+const navRouter = useRouter()
 const theme = ref<"system" | "light" | "dark">("system")
-const processCard = ref<HTMLElement | null>(null)
-const processHeight = ref<number | null>(null)
-let observer: ResizeObserver | null = null
 
-const days = computed(() => store.github.value?.contributions?.days ?? [])
 const backgroundStyle = computed(() => {
   const url = resolveAssetUrl(store.backgroundUrl.value)
   if (!url) {
     return {}
   }
-  return {
-    backgroundImage: `url(${url})`,
-  }
+  return { backgroundImage: `url(${url})` }
 })
 
 const themeLabel = computed(
@@ -57,44 +46,22 @@ function applyTheme(): void {
   root.setAttribute("data-theme", theme.value)
 }
 
-function measureProcess(): void {
-  const node = processCard.value?.querySelector(".card") ?? processCard.value
-  if (node instanceof HTMLElement) {
-    processHeight.value = node.getBoundingClientRect().height
-  }
+function onThemeClick(): void {
+  cycleTheme()
+  window.localStorage.setItem("heartbeat-theme", theme.value)
 }
 
-onMounted(async () => {
+function go(path: string): void {
+  void navRouter.push(path)
+}
+
+onMounted(() => {
   const saved = window.localStorage.getItem("heartbeat-theme")
   if (saved === "light" || saved === "dark" || saved === "system") {
     theme.value = saved
   }
   applyTheme()
-  await nextTick()
-  measureProcess()
-  observer = new ResizeObserver(() => measureProcess())
-  if (processCard.value) {
-    observer.observe(processCard.value)
-  }
 })
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-  observer = null
-})
-
-watch(
-  () => store.status.value?.processes?.length ?? 0,
-  async () => {
-    await nextTick()
-    measureProcess()
-  },
-)
-
-function onThemeClick(): void {
-  cycleTheme()
-  window.localStorage.setItem("heartbeat-theme", theme.value)
-}
 </script>
 
 <template>
@@ -110,24 +77,20 @@ function onThemeClick(): void {
         <button type="button" class="btn btn-ghost" @click="onThemeClick">{{ themeLabel }}</button>
       </div>
     </header>
-    <main class="dashboard">
-      <div class="top-row">
-        <div class="tile tile-live"><LiveStatus /></div>
-        <div class="tile tile-media"><MediaCard /></div>
-        <div class="tile tile-snapshot"><SnapshotLightbox /></div>
-      </div>
-      <div class="mid-row">
-        <div ref="processCard" class="tile tile-process"><ProcessCloud /></div>
-        <div class="tile tile-github">
-          <GithubPanel :compact-height="processHeight" />
-        </div>
-      </div>
-      <div class="tile tile-heatmap"><Heatmap :days="days" /></div>
-      <div class="lower-row">
-        <div class="tile tile-diary"><DiaryTimeline /></div>
-        <div class="tile tile-friends"><FriendLinks /></div>
-      </div>
-      <div class="tile tile-message"><MessageBoard /></div>
+    <nav class="nav-tabs" aria-label="主导航">
+      <button
+        v-for="item in NAV_ITEMS"
+        :key="item.name"
+        type="button"
+        class="tab"
+        :class="{ 'is-active': route.name === item.name || route.path === item.path }"
+        @click="go(item.path)"
+      >
+        {{ item.title }}
+      </button>
+    </nav>
+    <main class="content">
+      <RouterView />
     </main>
   </div>
 </template>
@@ -143,7 +106,6 @@ function onThemeClick(): void {
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  opacity: 1;
 }
 
 .page {
@@ -157,7 +119,7 @@ function onThemeClick(): void {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .header-actions {
@@ -184,67 +146,37 @@ function onThemeClick(): void {
   margin: 4px 0 0;
 }
 
-.dashboard {
+.nav-tabs {
   display: flex;
-  flex-direction: column;
-  gap: var(--page-gap);
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
-.top-row,
-.mid-row,
-.lower-row {
-  display: grid;
-  gap: var(--page-gap);
-  align-items: stretch;
+.tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.top-row {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.tab:hover {
+  background: var(--md-sys-color-surface-container-highest);
 }
 
-.mid-row {
-  grid-template-columns: 5fr 7fr;
+.tab.is-active {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
-.lower-row {
-  grid-template-columns: 7fr 5fr;
-}
-
-.tile {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.tile > :deep(.card),
-.tile > :deep(section) {
-  height: 100%;
-}
-
-.tile-heatmap {
-  width: 100%;
-}
-
-.tile-message {
-  width: 100%;
-}
-
-@media (max-width: 1100px) {
-  .top-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mid-row,
-  .lower-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.content {
+  min-height: 50vh;
 }
 
 @media (max-width: 720px) {
-  .top-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .header {
     flex-direction: column;
     align-items: flex-start;
@@ -257,7 +189,7 @@ function onThemeClick(): void {
   }
 
   .header {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 }
 </style>
