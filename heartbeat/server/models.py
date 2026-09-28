@@ -44,6 +44,25 @@ class Message(SQLModel, table=True):
     author: str = ""
     content: str = ""
     created_ts: int = Field(default=0, index=True)
+    ip: str = Field(default="", index=True)
+    location: str = ""
+    expose_ip: bool = False
+
+
+class MessageBan(SQLModel, table=True):
+    """Banned guestbook IP row."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    ip: str = Field(index=True)
+    created_ts: int = 0
+
+
+class IpLocationCache(SQLModel, table=True):
+    """Cached IP geolocation row."""
+
+    ip: str = Field(default="", primary_key=True)
+    location: str = ""
+    resolved_ts: int = 0
 
 
 class GithubCache(SQLModel, table=True):

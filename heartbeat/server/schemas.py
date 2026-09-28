@@ -160,6 +160,7 @@ class MessageCreate(SQLModel):
 
     author: str | None = Field(default=None, max_length=50)
     content: str
+    expose_ip: bool = False
 
     @field_validator("content")
     @classmethod
@@ -174,12 +175,26 @@ class MessageCreate(SQLModel):
 
 
 class MessageOut(SQLModel):
-    """Guestbook message response body."""
+    """Guestbook message response body for the public list."""
 
     id: int
     author: str = ""
     content: str = ""
     created_ts: int = 0
+    expose_ip: bool = False
+    location: str | None = None
+
+
+class MessageAdminOut(SQLModel):
+    """Guestbook message response body for the admin client."""
+
+    id: int
+    author: str = ""
+    content: str = ""
+    created_ts: int = 0
+    ip: str = ""
+    location: str = ""
+    expose_ip: bool = False
 
 
 class MessageList(SQLModel):
@@ -189,6 +204,35 @@ class MessageList(SQLModel):
     total: int = 0
     limit: int = 20
     offset: int = 0
+
+
+class MessageAdminList(SQLModel):
+    """Paged guestbook list payload with IP details."""
+
+    items: list[MessageAdminOut] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
+
+
+class BanCreate(SQLModel):
+    """Guestbook IP ban create body."""
+
+    ip: str = Field(min_length=1, max_length=64)
+
+
+class BanOut(SQLModel):
+    """Guestbook IP ban response body."""
+
+    id: int
+    ip: str = ""
+    created_ts: int = 0
+
+
+class BanList(SQLModel):
+    """Guestbook IP ban list payload."""
+
+    items: list[BanOut] = Field(default_factory=list)
 
 
 class FriendCreate(SQLModel):

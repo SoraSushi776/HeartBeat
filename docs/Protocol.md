@@ -26,6 +26,7 @@
 |------|------|------|
 | 400 | `invalid_payload` | 校验失败 |
 | 401 | `unauthorized` | API Key 错误或缺失 |
+| 403 | `forbidden` | 被拒绝（如 IP 已封禁） |
 | 404 | `not_found` | 资源不存在 |
 | 409 | `conflict` | 幂等冲突（可选） |
 | 413 | `payload_too_large` | 体积超限 |
@@ -289,7 +290,9 @@ SSE 实时推送。事件类型：
   "id": 1,
   "author": "Sora",
   "content": "路过留个脚印",
-  "created_ts": 1761648000000
+  "created_ts": 1761648000000,
+  "expose_ip": false,
+  "location": null
 }
 ```
 
@@ -299,13 +302,48 @@ SSE 实时推送。事件类型：
 | `author` | string | 否 | 显示名，可空表示匿名，最长 50 |
 | `content` | string | 是 | 正文，去空白后非空，最长 500 |
 | `created_ts` | int | 响应 | 创建时间，UTC 毫秒 |
+| `expose_ip` | bool | 否 | 是否允许公开 IP 属地，默认 `false` |
+| `location` | string \| null | 响应 | IP 属地，仅 `expose_ip` 为 `true` 时返回 |
+
+### 管理资源模型
+
+管理端（`X-API-Key`）额外可见 `ip` 与始终返回的 `location`：
+
+```json
+{
+  "id": 1,
+  "author": "Sora",
+  "content": "路过留个脚印",
+  "created_ts": 1761648000000,
+  "ip": "203.0.113.9",
+  "location": "广东",
+  "expose_ip": true
+}
+```
+
+`location` 由服务端解析：国内精确到省，国外到国家，失败为 `未知`。
+
+### 封禁资源模型
+
+```json
+{
+  "id": 1,
+  "ip": "203.0.113.9",
+  "created_ts": 1761648000000
+}
+```
 
 ### 接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/v1/messages` | 列表，倒序，`?limit=&offset=` |
-| POST | `/api/v1/messages` | 发布留言，body 为 `{ "author"?, "content" }` |
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| GET | `/api/v1/messages` | 无 | 列表，倒序，`?limit=&offset=` |
+| POST | `/api/v1/messages` | 无 | 发布留言，body 为 `{ "author"?, "content", "expose_ip"? }` |
+| GET | `/api/v1/messages/admin` | `X-API-Key` | 管理列表，含 `ip` 与 `location` |
+| DELETE | `/api/v1/messages/{id}` | `X-API-Key` | 删除单条留言 |
+| GET | `/api/v1/messages/bans` | `X-API-Key` | 封禁列表 |
+| POST | `/api/v1/messages/bans` | `X-API-Key` | 封禁 IP，body 为 `{ "ip" }` |
+| DELETE | `/api/v1/messages/bans/{id}` | `X-API-Key` | 解封 |
 
 列表响应：
 
@@ -321,7 +359,9 @@ SSE 实时推送。事件类型：
 }
 ```
 
-`POST` 写入不需要 API Key，但要求客户端在线：最近心跳落在 online 窗口（建议 90 秒）内，否则返回 `409`（`conflict`，`Client offline`）。`content` 缺失或空白返回 `400`。同一来源写入过频返回 `429`（建议 60 秒 5 条）。
+`POST` 写入不需要 API Key，但要求客户端在线：最近心跳落在 online 窗口（建议 90 秒）内，否则返回 `409`（`conflict`，`Client offline`）。`content` 缺失或空白返回 `400`。同一来源写入过频返回 `429`（建议 60 秒 5 条）。被封 IP 写入返回 `403`（`forbidden`，`IP banned`）。
+
+服务端在 `POST` 时记录客户端 IP（优先 `X-Forwarded-For` 第一段），并解析属地缓存到本地；属地查询只在服务端发起，失败时写 `未知`。
 
 SSE `message` 事件在新留言落库后推送，data 为上述资源模型。前端发送表单在 `online` 为 `false` 时应禁用。
 

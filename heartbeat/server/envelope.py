@@ -6,6 +6,7 @@ from typing import Any
 ERROR_CODES: dict[int, str] = {
     400: "invalid_payload",
     401: "unauthorized",
+    403: "forbidden",
     404: "not_found",
     409: "conflict",
     413: "payload_too_large",

@@ -6,7 +6,15 @@ import logging
 from sqlmodel import Session, SQLModel, create_engine
 
 from heartbeat.server.config import get_settings
-from heartbeat.server.models import Diary, Friend, GithubCache, Heartbeat, Message
+from heartbeat.server.models import (
+    Diary,
+    Friend,
+    GithubCache,
+    Heartbeat,
+    IpLocationCache,
+    Message,
+    MessageBan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +23,8 @@ TABLES = (
     Diary.__table__,
     Friend.__table__,
     Message.__table__,
+    MessageBan.__table__,
+    IpLocationCache.__table__,
     GithubCache.__table__,
 )
 
