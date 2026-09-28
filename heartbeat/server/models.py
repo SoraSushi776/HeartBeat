@@ -37,6 +37,15 @@ class Friend(SQLModel, table=True):
     sort: int = Field(default=0, index=True)
 
 
+class Message(SQLModel, table=True):
+    """Guestbook message row."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    author: str = ""
+    content: str = ""
+    created_ts: int = Field(default=0, index=True)
+
+
 class GithubCache(SQLModel, table=True):
     """Single-row GitHub profile cache."""
 

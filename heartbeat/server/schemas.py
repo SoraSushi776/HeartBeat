@@ -155,6 +155,42 @@ class DiaryList(SQLModel):
     offset: int = 0
 
 
+class MessageCreate(SQLModel):
+    """Guestbook create body."""
+
+    author: str | None = Field(default=None, max_length=50)
+    content: str
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        """Reject empty or whitespace-only content and cap its length."""
+        text = value.strip()
+        if not text:
+            raise ValueError("content must not be empty")
+        if len(text) > 500:
+            raise ValueError("content must be at most 500 characters")
+        return text
+
+
+class MessageOut(SQLModel):
+    """Guestbook message response body."""
+
+    id: int
+    author: str = ""
+    content: str = ""
+    created_ts: int = 0
+
+
+class MessageList(SQLModel):
+    """Paged guestbook list payload."""
+
+    items: list[MessageOut] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
+
+
 class FriendCreate(SQLModel):
     """Friend link create body."""
 

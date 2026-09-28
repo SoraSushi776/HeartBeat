@@ -6,7 +6,7 @@ import logging
 from sqlmodel import Session, SQLModel, create_engine
 
 from heartbeat.server.config import get_settings
-from heartbeat.server.models import Diary, Friend, GithubCache, Heartbeat
+from heartbeat.server.models import Diary, Friend, GithubCache, Heartbeat, Message
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,7 @@ TABLES = (
     Heartbeat.__table__,
     Diary.__table__,
     Friend.__table__,
+    Message.__table__,
     GithubCache.__table__,
 )
 

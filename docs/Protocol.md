@@ -224,6 +224,7 @@ SSE 实时推送。事件类型：
 | `status` | 与 `GET /api/v1/status` 的 `data` 相同 |
 | `heartbeat` | 精简心跳（可不含截图） |
 | `snapshot` | 截图更新通知 `{ "client_id", "ts", "url" }` |
+| `message` | 新留言，见「四、留言」资源模型 |
 
 单用户场景下前端优先短轮询 `GET /api/v1/status`（5–15 秒），SSE 作为增强。
 
@@ -279,7 +280,52 @@ SSE 实时推送。事件类型：
 
 日记接口建议要求鉴权（写操作 `X-API-Key` 或前端登录），避免公开可写。
 
-## 四、友情链接
+## 四、留言
+
+### 资源模型
+
+```json
+{
+  "id": 1,
+  "author": "Sora",
+  "content": "路过留个脚印",
+  "created_ts": 1761648000000
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | int | 响应 | 自增主键 |
+| `author` | string | 否 | 显示名，可空表示匿名，最长 50 |
+| `content` | string | 是 | 正文，去空白后非空，最长 500 |
+| `created_ts` | int | 响应 | 创建时间，UTC 毫秒 |
+
+### 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/messages` | 列表，倒序，`?limit=&offset=` |
+| POST | `/api/v1/messages` | 发布留言，body 为 `{ "author"?, "content" }` |
+
+列表响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "items": [],
+    "total": 0,
+    "limit": 20,
+    "offset": 0
+  }
+}
+```
+
+`POST` 写入不需要 API Key，但要求客户端在线：最近心跳落在 online 窗口（建议 90 秒）内，否则返回 `409`（`conflict`，`Client offline`）。`content` 缺失或空白返回 `400`。同一来源写入过频返回 `429`（建议 60 秒 5 条）。
+
+SSE `message` 事件在新留言落库后推送，data 为上述资源模型。前端发送表单在 `online` 为 `false` 时应禁用。
+
+## 五、友情链接
 
 ### 资源模型
 
@@ -314,7 +360,7 @@ SSE 实时推送。事件类型：
 
 前端只读列表可公开，写操作需 API Key。
 
-## 五、GitHub 缓存
+## 六、GitHub 缓存
 
 服务端定时抓取 GitHub 资料并缓存，前端不直连 GitHub。贡献热力图走 GitHub GraphQL `contributionsCollection`，需要个人访问令牌（PAT）。
 
@@ -389,13 +435,13 @@ SSE 实时推送。事件类型：
 
 客户端保存设置后应调用 `POST /api/v1/github/token` 把 `github_token`（可带 `login`）推送到服务端，请求头带 `X-API-Key`。推送失败仅记日志，下次保存设置时重试。token 不写入心跳上报体。
 
-## 六、版本与兼容
+## 七、版本与兼容
 
 - 客户端发送 `X-Client-Version` 可选头。
 - 服务端对已废弃字段在响应中保留一个次版本周期。
 - 新增字段不视为破坏性变更；删除或改义字段必须升 `/api/v2`。
 
-## 七、体积与频率
+## 八、体积与频率
 
 | 项目 | 建议值 |
 |------|--------|
