@@ -7,7 +7,9 @@ const store = useDashboard()
 const media = computed(() => store.status.value?.media ?? null)
 
 const displayPosition = ref(0)
+const trackKey = ref("")
 let frame = 0
+let lastTickTs = 0
 
 const STATE_TEXT: Record<string, string> = {
   playing: "正在播放",
@@ -32,22 +34,45 @@ const bars = Array.from({ length: 28 }, (_, index) => ({
 
 const playState = computed(() => (media.value?.state === "playing" ? "running" : "paused"))
 
-function syncPosition(): void {
-  displayPosition.value = media.value?.position_ms ?? 0
+function trackKeyOf(value: typeof media.value): string {
+  return [value?.title, value?.artist, value?.album, value?.app].join("|")
+}
+
+function syncPosition(force = false): void {
+  const nextKey = trackKeyOf(media.value)
+  const incoming = media.value?.position_ms ?? 0
+  const changed = nextKey !== trackKey.value
+  if (changed || force) {
+    trackKey.value = nextKey
+    displayPosition.value = incoming
+    return
+  }
+  if (incoming > 0) {
+    displayPosition.value = incoming
+    return
+  }
+  if (media.value?.state !== "playing") {
+    displayPosition.value = Math.max(displayPosition.value, incoming)
+  }
 }
 
 /** 按帧推进本地播放进度，服务端数据到达时校正 */
-function tick(): void {
+function tick(timestamp: number): void {
+  const delta = lastTickTs ? timestamp - lastTickTs : 16
+  lastTickTs = timestamp
   if (media.value?.state === "playing") {
-    displayPosition.value += 16
+    const duration = media.value?.duration_ms ?? 0
+    const next = displayPosition.value + delta
+    displayPosition.value = duration ? Math.min(next, duration) : next
   }
   frame = requestAnimationFrame(tick)
 }
 
-watch(media, syncPosition)
+watch(media, () => syncPosition(false))
 
 onMounted(() => {
-  syncPosition()
+  syncPosition(true)
+  lastTickTs = 0
   frame = requestAnimationFrame(tick)
 })
 

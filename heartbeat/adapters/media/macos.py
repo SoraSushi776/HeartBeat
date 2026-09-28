@@ -96,20 +96,24 @@ class MacosMediaAdapter:
     """nowplaying-cli 优先，回落 osascript Music/Spotify"""
 
     def __init__(self) -> None:
+        from heartbeat.adapters.media.clock import MediaClock
         from heartbeat.adapters.media.nowplaying import NowPlayingMediaAdapter
 
         self._nowplaying = NowPlayingMediaAdapter()
+        self._clock = MediaClock()
 
     def collect(self, gate: PrivacyGate) -> MediaInfo | None:
         """采集正在播放，隐私关闭时返回 None"""
         if not gate.allow(Capability.MEDIA):
             return None
+        candidates: list[MediaInfo] = []
         if self._nowplaying.available:
             info = self._nowplaying.collect(gate)
-            if info is not None and info.state is not MediaState.IDLE:
-                return info
-        candidates = [self._query(app, script) for app, script in _APP_SCRIPTS]
-        return prefer_playing(candidates)
+            if info is not None:
+                candidates.append(info)
+        candidates.extend(self._query(app, script) for app, script in _APP_SCRIPTS)
+        chosen = prefer_playing(candidates)
+        return self._clock.decorate(chosen)
 
     def _query(self, app: str, script: str) -> MediaInfo:
         output = self._run_osascript(script)

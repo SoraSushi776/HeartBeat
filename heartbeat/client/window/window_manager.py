@@ -215,6 +215,21 @@ class WindowManager(QObject):
         self._window.close_requested.connect(self._on_close)
         self._window.language_change_requested.connect(self._on_language)
         self._window.page_changed.connect(self._on_page_changed)
+        self._window.display_list_changed.connect(self._on_display_list)
+        self._window.diagnostics.set_display_list(self._config.process_whitelist)
+
+    @Slot(list)
+    def _on_display_list(self, names: list) -> None:
+        cleaned = [str(item).strip() for item in names if str(item).strip()]
+        self._config.process_whitelist = list(dict.fromkeys(cleaned))
+        self._config_store.save(self._config)
+        self.config_saved.emit(
+            self._config,
+            self._secret_store.load_api_key(),
+            self._secret_store.load_github_token(),
+            self._secret_store.load_github_login(),
+        )
+        logger.info("Process display list updated: %s", self._config.process_whitelist)
 
     def _wire_api(self) -> None:
         diary = self._window.diary

@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
     save_requested = Signal(object, str, str, str)
     close_requested = Signal()
     diagnostics_refresh_requested = Signal()
+    display_list_changed = Signal(list)
     language_change_requested = Signal(str)
     page_changed = Signal(int)
 
@@ -63,6 +64,10 @@ class MainWindow(QMainWindow):
     @property
     def friends(self) -> FriendsView:
         return self._friends
+
+    @property
+    def diagnostics(self) -> DiagnosticsView:
+        return self._diagnostics
 
     @property
     def translator(self) -> Translator:
@@ -150,3 +155,4 @@ class MainWindow(QMainWindow):
         self._settings.save_requested.connect(self.save_requested.emit)
         self._settings.close_requested.connect(self.close_requested.emit)
         self._diagnostics.refresh_requested.connect(self.diagnostics_refresh_requested.emit)
+        self._diagnostics.display_list_changed.connect(self.display_list_changed.emit)

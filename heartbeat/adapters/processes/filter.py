@@ -116,16 +116,16 @@ class ProcessFilter:
     @property
     def enabled(self) -> bool:
         """白名单非空或 collect_all 时采集"""
-        return self._collect_all or bool(self._allow)
+        return bool(self._allow) or self._collect_all
 
     def matches(self, name: str, exe: str | None, cmdline0: str | None) -> bool:
-        """命中排除表则拒绝；collect_all 时只接受可见应用，否则需命中白名单"""
+        """命中排除表则拒绝；白名单非空时只认白名单，否则 collect_all 收可见应用"""
         candidates = candidate_names(name, exe, cmdline0)
         if any(pattern.fullmatch(item) for item in candidates for pattern in self._exclude):
             return False
-        if self._collect_all:
-            return self._looks_like_user_app(name, exe, cmdline0)
-        return any(pattern.fullmatch(item) for item in candidates for pattern in self._allow)
+        if self._allow:
+            return any(pattern.fullmatch(item) for item in candidates for pattern in self._allow)
+        return self._collect_all and self._looks_like_user_app(name, exe, cmdline0)
 
     def _looks_like_user_app(self, name: str, exe: str | None, cmdline0: str | None) -> bool:
         paths = [item for item in (exe, cmdline0) if item]

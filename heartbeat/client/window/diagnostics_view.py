@@ -5,21 +5,27 @@ from __future__ import annotations
 from datetime import datetime
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QHideEvent, QImage, QPixmap, QShowEvent
+from PySide6.QtGui import QAction, QHideEvent, QImage, QPixmap, QShowEvent
 from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QListWidgetItem,
+    QMenu,
     QPushButton,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
+from heartbeat.adapters.processes.collector import PsutilProcessAdapter
+from heartbeat.adapters.processes.filter import ProcessFilter
+from heartbeat.adapters.privacy import PrivacyGate
 from heartbeat.client.diagnostics import DiagnosticsSnapshot, format_ms
 from heartbeat.client.i18n import Translator
-from heartbeat.protocol.models import MediaInfo, MediaState, ProcessInfo, SystemInfo
+from heartbeat.protocol.models import Capability, MediaInfo, MediaState, ProcessInfo, SystemInfo
 
 PUSH_LOG_LIMIT = 20
 COVER_SIZE = 96
@@ -27,9 +33,10 @@ AUTO_REFRESH_MS = 5000
 
 
 class DiagnosticsView(QWidget):
-    """Show a live local snapshot without waiting for the push cycle."""
+    """Show a live local snapshot and manage the process display list."""
 
     refresh_requested = Signal()
+    display_list_changed = Signal(list)
 
     def __init__(self, translator: Translator) -> None:
         super().__init__()
@@ -42,13 +49,17 @@ class DiagnosticsView(QWidget):
         self._album_label = QLabel()
         self._progress_label = QLabel()
         self._process_list = QListWidget()
+        self._display_list = QListWidget()
         self._cpu_label = QLabel()
         self._memory_label = QLabel()
         self._load_label = QLabel()
         self._push_log = QListWidget()
         self._refresh_button = QPushButton()
+        self._add_display_button = QPushButton()
+        self._remove_display_button = QPushButton()
         self._music_group = QGroupBox()
         self._processes_group = QGroupBox()
+        self._display_group = QGroupBox()
         self._system_group = QGroupBox()
         self._push_group = QGroupBox()
         self._title_caption = QLabel()
@@ -58,18 +69,34 @@ class DiagnosticsView(QWidget):
         self._cpu_caption = QLabel()
         self._memory_caption = QLabel()
         self._load_caption = QLabel()
+        self._display_names: list[str] = []
         self._timer = QTimer(self)
         self._timer.setInterval(AUTO_REFRESH_MS)
         self._timer.timeout.connect(self.refresh_requested.emit)
         self._build_layout()
         self.retranslate()
         self._refresh_button.clicked.connect(self.refresh_requested.emit)
+        self._add_display_button.clicked.connect(self._add_selected_process)
+        self._remove_display_button.clicked.connect(self._remove_selected_display)
+        self._process_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._process_list.customContextMenuRequested.connect(self._show_process_menu)
+        self._display_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._display_list.customContextMenuRequested.connect(self._show_display_menu)
 
     def apply_snapshot(self, snapshot: DiagnosticsSnapshot) -> None:
         """Render a fresh local collection result."""
         self._apply_media(snapshot.media, snapshot.cover_bytes)
         self._apply_processes(snapshot.processes)
         self._apply_system(snapshot.system)
+
+    def set_display_list(self, names: list[str]) -> None:
+        """Replace the process display list shown next to the process list."""
+        self._display_names = list(dict.fromkeys(names))
+        self._refresh_display_list()
+
+    def display_list(self) -> list[str]:
+        """Return the current process display list."""
+        return list(self._display_names)
 
     def record_push_success(self, ts: float) -> None:
         """Append a push success entry to the recent log."""
@@ -97,6 +124,7 @@ class DiagnosticsView(QWidget):
         """Refresh all labels for the active language."""
         self._music_group.setTitle(self._t.tr("diag.music"))
         self._processes_group.setTitle(self._t.tr("diag.processes"))
+        self._display_group.setTitle(self._t.tr("diag.display_list"))
         self._system_group.setTitle(self._t.tr("diag.system"))
         self._push_group.setTitle(self._t.tr("diag.push_log"))
         self._title_caption.setText(self._t.tr("diag.title_label"))
@@ -107,14 +135,19 @@ class DiagnosticsView(QWidget):
         self._memory_caption.setText(self._t.tr("diag.memory"))
         self._load_caption.setText(self._t.tr("diag.load"))
         self._refresh_button.setText(self._t.tr("button.refresh"))
+        self._add_display_button.setText(self._t.tr("diag.add_display"))
+        self._remove_display_button.setText(self._t.tr("diag.remove_display"))
+        self._refresh_display_list()
 
     def _build_layout(self) -> None:
         root = QVBoxLayout(self)
         root.addWidget(self._build_music_group())
-        middle = QHBoxLayout()
-        middle.addWidget(self._build_processes_group(), 1)
-        middle.addWidget(self._build_system_group(), 1)
-        root.addLayout(middle, 1)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(self._build_processes_group())
+        splitter.addWidget(self._build_display_group())
+        splitter.addWidget(self._build_system_group())
+        splitter.setSizes([280, 220, 200])
+        root.addWidget(splitter, 1)
         root.addWidget(self._build_push_group(), 1)
         root.addWidget(self._refresh_button)
 
@@ -133,8 +166,15 @@ class DiagnosticsView(QWidget):
 
     def _build_processes_group(self) -> QGroupBox:
         layout = QVBoxLayout(self._processes_group)
-        layout.addWidget(self._process_list)
+        layout.addWidget(self._process_list, 1)
+        layout.addWidget(self._add_display_button)
         return self._processes_group
+
+    def _build_display_group(self) -> QGroupBox:
+        layout = QVBoxLayout(self._display_group)
+        layout.addWidget(self._display_list, 1)
+        layout.addWidget(self._remove_display_button)
+        return self._display_group
 
     def _build_system_group(self) -> QGroupBox:
         form = QFormLayout(self._system_group)
@@ -164,13 +204,24 @@ class DiagnosticsView(QWidget):
         self._progress_label.setText(f"{position} / {duration}")
 
     def _apply_processes(self, processes: list[ProcessInfo]) -> None:
+        names = self._diagnose_process_names()
+        source = names or [item.name for item in processes]
         self._process_list.clear()
-        if not processes:
+        if not source:
             self._process_list.addItem(self._t.tr("diag.process_empty"))
             return
-        for item in processes:
-            label = f"{item.name} x{item.count}" if item.count > 1 else item.name
-            self._process_list.addItem(label)
+        for name in source:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, name)
+            self._process_list.addItem(item)
+
+    def _diagnose_process_names(self) -> list[str]:
+        gate = PrivacyGate()
+        if not gate.allow(Capability.PROCESSES):
+            return []
+        adapter = PsutilProcessAdapter(ProcessFilter(collect_all=True))
+        items = adapter.collect(gate) or []
+        return sorted(item.name for item in items)
 
     def _apply_system(self, system: SystemInfo | None) -> None:
         if system is None:
@@ -199,3 +250,54 @@ class DiagnosticsView(QWidget):
         self._push_log.insertItem(0, text)
         while self._push_log.count() > PUSH_LOG_LIMIT:
             self._push_log.takeItem(self._push_log.count() - 1)
+
+    def _refresh_display_list(self) -> None:
+        self._display_list.clear()
+        for name in self._display_names:
+            self._display_list.addItem(name)
+
+    def _add_selected_process(self) -> None:
+        item = self._process_list.currentItem()
+        if item is None:
+            return
+        self._add_name(item.data(Qt.ItemDataRole.UserRole) or item.text())
+
+    def _remove_selected_display(self) -> None:
+        item = self._display_list.currentItem()
+        if item is None:
+            return
+        name = item.text()
+        if name in self._display_names:
+            self._display_names.remove(name)
+            self._refresh_display_list()
+            self.display_list_changed.emit(self.display_list())
+
+    def _add_name(self, name: str) -> None:
+        cleaned = str(name).strip()
+        if not cleaned or cleaned in self._display_names:
+            return
+        self._display_names.append(cleaned)
+        self._refresh_display_list()
+        self.display_list_changed.emit(self.display_list())
+
+    def _show_process_menu(self, pos) -> None:
+        item = self._process_list.itemAt(pos)
+        if item is None:
+            return
+        self._process_list.setCurrentItem(item)
+        menu = QMenu(self)
+        action = QAction(self._t.tr("diag.add_display"), self)
+        action.triggered.connect(self._add_selected_process)
+        menu.addAction(action)
+        menu.exec(self._process_list.mapToGlobal(pos))
+
+    def _show_display_menu(self, pos) -> None:
+        item = self._display_list.itemAt(pos)
+        if item is None:
+            return
+        self._display_list.setCurrentItem(item)
+        menu = QMenu(self)
+        action = QAction(self._t.tr("diag.remove_display"), self)
+        action.triggered.connect(self._remove_selected_display)
+        menu.addAction(action)
+        menu.exec(self._display_list.mapToGlobal(pos))

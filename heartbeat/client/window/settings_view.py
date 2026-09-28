@@ -51,7 +51,6 @@ class SettingsView(QWidget):
         self._scale_spin.setSingleStep(0.05)
         self._quality_spin = QSpinBox()
         self._quality_spin.setRange(1, 100)
-        self._whitelist_edit = QLineEdit()
         self._autostart_check = QCheckBox()
         self._start_minimized = QCheckBox()
         self._save_button = QPushButton()
@@ -69,7 +68,6 @@ class SettingsView(QWidget):
         self._blur_label = QLabel()
         self._scale_label = QLabel()
         self._quality_label = QLabel()
-        self._whitelist_label = QLabel()
         self._build_layout()
         self.retranslate()
         self._save_button.clicked.connect(self._on_save)
@@ -97,7 +95,6 @@ class SettingsView(QWidget):
         self._blur_spin.setValue(config.screenshot.blur_radius)
         self._scale_spin.setValue(config.screenshot.scale)
         self._quality_spin.setValue(config.screenshot.quality)
-        self._whitelist_edit.setText(", ".join(config.process_whitelist))
         self._autostart_check.setChecked(config.autostart.enabled)
         self._start_minimized.setChecked(config.ui.start_minimized)
 
@@ -116,7 +113,6 @@ class SettingsView(QWidget):
         self._blur_label.setText(self._t.tr("settings.blur_radius"))
         self._scale_label.setText(self._t.tr("settings.scale"))
         self._quality_label.setText(self._t.tr("settings.quality"))
-        self._whitelist_label.setText(self._t.tr("settings.process_whitelist"))
         self._push_enabled.setText(self._t.tr("settings.enable_push"))
         self._collect_screenshot.setText(self._t.tr("settings.collect_screenshot"))
         self._collect_media.setText(self._t.tr("settings.collect_media"))
@@ -124,7 +120,6 @@ class SettingsView(QWidget):
         self._collect_system.setText(self._t.tr("settings.collect_system"))
         self._autostart_check.setText(self._t.tr("settings.autostart"))
         self._start_minimized.setText(self._t.tr("settings.start_minimized"))
-        self._whitelist_edit.setPlaceholderText(self._t.tr("settings.whitelist_placeholder"))
         self._save_button.setText(self._t.tr("button.save"))
         self._cancel_button.setText(self._t.tr("button.close"))
 
@@ -155,13 +150,8 @@ class SettingsView(QWidget):
         self._base.screenshot.blur_radius = self._blur_spin.value()
         self._base.screenshot.scale = self._scale_spin.value()
         self._base.screenshot.quality = self._quality_spin.value()
-        self._base.process_whitelist = self._parse_whitelist(self._whitelist_edit.text())
         self._base.autostart.enabled = self._autostart_check.isChecked()
         self._base.ui.start_minimized = self._start_minimized.isChecked()
-
-    def _parse_whitelist(self, text: str) -> list[str]:
-        parts = [item.strip() for item in text.replace(",", "\n").splitlines()]
-        return [item for item in parts if item]
 
     def _build_layout(self) -> None:
         root = QVBoxLayout(self)
@@ -207,7 +197,6 @@ class SettingsView(QWidget):
 
     def _build_general_group(self) -> QGroupBox:
         form = QFormLayout(self._general_group)
-        form.addRow(self._whitelist_label, self._whitelist_edit)
         form.addRow(self._autostart_check)
         form.addRow(self._start_minimized)
         return self._general_group
