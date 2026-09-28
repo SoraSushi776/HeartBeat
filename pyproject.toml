@@ -19,6 +19,8 @@ dependencies = [
 [project.optional-dependencies]
 client = [
     "PySide6>=6.6.0",
+    "winrt-Windows.Media.Control>=2.0.0; sys_platform == 'win32'",
+    "jeepney>=0.8.0; sys_platform == 'linux'",
 ]
 windows = [
     "winrt-Windows.Media.Control>=2.0.0",

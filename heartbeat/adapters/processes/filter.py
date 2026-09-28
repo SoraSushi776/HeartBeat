@@ -71,6 +71,13 @@ _SYSTEM_PATH_HINTS: tuple[str, ...] = (
     "/Library/Apple/",
     "/private/",
     "/sbin/",
+    "\\Windows\\System32\\",
+    "\\Windows\\SysWOW64\\",
+    "\\Windows\\WinSxS\\",
+    "C:\\Windows\\",
+    "\\Program Files\\Windows Defender\\",
+    "\\Program Files\\Microsoft\\",
+    "\\Program Files (x86)\\Microsoft\\",
 )
 
 

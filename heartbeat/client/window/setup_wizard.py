@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import Any
 
 from PySide6.QtCore import QMetaObject, Qt, QThread, Signal, Slot
@@ -22,6 +23,8 @@ from heartbeat.client.i18n import Translator
 from heartbeat.client.worker.setup import SetupWorker
 
 logger = logging.getLogger(__name__)
+
+_IS_MACOS = sys.platform == "darwin"
 
 
 class SetupWizard(QWizard):
@@ -172,9 +175,12 @@ class SetupWizard(QWizard):
         server_layout.addLayout(server_form)
         server_layout.addWidget(self._finish_hint)
         server_layout.addStretch(1)
-        self.addPage(self._tools_page)
-        self.addPage(self._perms_page)
-        self.addPage(self._server_page)
+        if _IS_MACOS:
+            self.addPage(self._tools_page)
+            self.addPage(self._perms_page)
+            self.addPage(self._server_page)
+        else:
+            self.addPage(self._server_page)
 
     def _wire(self) -> None:
         self._worker.report_ready.connect(self.apply_report)
