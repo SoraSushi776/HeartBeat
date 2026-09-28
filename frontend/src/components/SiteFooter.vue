@@ -54,8 +54,12 @@ const tagline = computed(() => store.site.value.tagline || "")
 <style scoped>
 .site-footer {
   margin-top: 36px;
-  padding: 28px 0 8px;
+  margin-left: calc(-1 * var(--page-pad-x));
+  margin-right: calc(-1 * var(--page-pad-x));
+  margin-bottom: calc(-1 * var(--page-pad-bottom));
+  padding: 32px var(--page-pad-x) 20px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface-variant);
 }
 
