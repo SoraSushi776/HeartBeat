@@ -217,6 +217,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# HeartBeat runtime data
+data/
+
 # Frontend
 frontend/dist/
 frontend/node_modules/
