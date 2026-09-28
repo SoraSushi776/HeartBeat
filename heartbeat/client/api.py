@@ -87,8 +87,24 @@ class ApiService:
         return self._request("PUT", "/site", json=payload)
 
     def list_messages(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
-        """Return the paged guestbook message list payload."""
-        return self._request("GET", f"/messages?limit={limit}&offset={offset}")
+        """Return the paged guestbook message list payload with IP details."""
+        return self._request("GET", f"/messages/admin?limit={limit}&offset={offset}")
+
+    def delete_message(self, message_id: int) -> dict[str, Any]:
+        """Delete one guestbook message and return the ack payload."""
+        return self._request("DELETE", f"/messages/{message_id}")
+
+    def list_message_bans(self) -> dict[str, Any]:
+        """Return the guestbook IP ban list payload."""
+        return self._request("GET", "/messages/bans")
+
+    def create_message_ban(self, ip: str) -> dict[str, Any]:
+        """Ban a guestbook IP and return the created ban row."""
+        return self._request("POST", "/messages/bans", json={"ip": ip})
+
+    def delete_message_ban(self, ban_id: int) -> dict[str, Any]:
+        """Remove one guestbook IP ban and return the ack payload."""
+        return self._request("DELETE", f"/messages/bans/{ban_id}")
 
     def upload_background(self, data: bytes, content_type: str) -> dict[str, Any]:
         """Upload a site background image."""

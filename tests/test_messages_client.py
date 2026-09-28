@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import unittest
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from heartbeat.client import notify
 from heartbeat.client.i18n import Translator
@@ -85,6 +85,104 @@ class MessageViewTest(unittest.TestCase):
         self.assertEqual(view._list.count(), 0)
         self.assertFalse(view._empty_label.isHidden())
         view.retranslate()
+        view.close()
+        app.processEvents()
+
+    def test_apply_messages_shows_ip_and_location(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_messages(
+            {
+                "items": [
+                    {
+                        "id": 7,
+                        "author": "Sora",
+                        "content": "hi",
+                        "created_ts": 1,
+                        "ip": "203.0.113.9",
+                        "location": "广东",
+                    }
+                ]
+            }
+        )
+        text = view._list.item(0).text()
+        self.assertIn("203.0.113.9", text)
+        self.assertIn("广东", text)
+        self.assertIn("hi", text)
+        view.close()
+        app.processEvents()
+
+    def test_apply_messages_marks_unknown_ip_and_location(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_messages({"items": [{"id": 1, "author": "", "content": "x", "created_ts": 1}]})
+        text = view._list.item(0).text()
+        self.assertIn("未知 IP", text)
+        self.assertIn("未知", text)
+        view.close()
+        app.processEvents()
+
+    def test_delete_signal_carries_message_id(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_messages({"items": [{"id": 42, "author": "a", "content": "b", "created_ts": 1}]})
+        received: list[int] = []
+        view.delete_requested.connect(received.append)
+        view._list.setCurrentRow(0)
+        original = QMessageBox.question
+        QMessageBox.question = lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+        try:
+            view._on_delete()
+        finally:
+            QMessageBox.question = original
+        self.assertEqual(received, [42])
+        view.close()
+        app.processEvents()
+
+    def test_ban_signal_carries_ip(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_messages(
+            {
+                "items": [
+                    {"id": 1, "author": "a", "content": "b", "created_ts": 1, "ip": "198.51.100.4"}
+                ]
+            }
+        )
+        received: list[str] = []
+        view.ban_requested.connect(received.append)
+        view._list.setCurrentRow(0)
+        original = QMessageBox.question
+        QMessageBox.question = lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+        try:
+            view._on_ban()
+        finally:
+            QMessageBox.question = original
+        self.assertEqual(received, ["198.51.100.4"])
+        view.close()
+        app.processEvents()
+
+    def test_unban_signal_carries_ban_id(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_bans({"items": [{"id": 9, "ip": "10.0.0.1", "created_ts": 1}]})
+        received: list[int] = []
+        view.unban_requested.connect(received.append)
+        view._ban_list.setCurrentRow(0)
+        view._on_unban()
+        self.assertEqual(received, [9])
+        view.close()
+        app.processEvents()
+
+    def test_apply_bans_fills_list(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_bans({"items": [{"id": 1, "ip": "1.2.3.4", "created_ts": 1}]})
+        self.assertEqual(view._ban_list.count(), 1)
+        self.assertEqual(view._ban_list.item(0).text(), "1.2.3.4")
+        view.apply_bans({"items": []})
+        self.assertEqual(view._ban_list.count(), 0)
+        self.assertFalse(view._ban_empty_label.isHidden())
         view.close()
         app.processEvents()
 

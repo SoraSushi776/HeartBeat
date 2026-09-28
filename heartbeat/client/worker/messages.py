@@ -1,4 +1,4 @@
-"""Background worker polling guestbook messages and reporting new arrivals."""
+"""Background worker polling guestbook messages and running admin operations."""
 
 from __future__ import annotations
 
@@ -16,11 +16,19 @@ FETCH_LIMIT = 50
 
 
 class MessageWorker(QObject):
-    """Poll the guestbook list and emit only messages not seen before."""
+    """Poll the guestbook list and run message admin calls off the UI thread."""
 
     messages_loaded = Signal(object)
     messages_failed = Signal(str)
     message_arrived = Signal(object)
+    message_deleted = Signal(int)
+    message_delete_failed = Signal(str)
+    bans_loaded = Signal(object)
+    bans_failed = Signal(str)
+    ban_created = Signal(object)
+    ban_create_failed = Signal(str)
+    ban_deleted = Signal(int)
+    ban_delete_failed = Signal(str)
 
     def __init__(self, service: ApiService, interval_ms: int = POLL_INTERVAL_MS) -> None:
         super().__init__()
@@ -48,6 +56,53 @@ class MessageWorker(QObject):
     def refresh(self) -> None:
         """Fetch the message list on demand, reporting failures to the UI."""
         self._poll(report_errors=True)
+
+    @Slot()
+    def load_bans(self) -> None:
+        """Fetch the IP ban list and emit the result."""
+        try:
+            data = self._service.list_message_bans()
+        except ApiError as exc:
+            logger.warning("Ban list load failed: %s", exc.message)
+            self.bans_failed.emit(exc.message)
+            return
+        self.bans_loaded.emit(data)
+
+    @Slot(int)
+    def delete_message(self, message_id: int) -> None:
+        """Delete one guestbook message and report the outcome."""
+        try:
+            self._service.delete_message(message_id)
+        except ApiError as exc:
+            logger.warning("Message delete failed: id=%s %s", message_id, exc.message)
+            self.message_delete_failed.emit(exc.message)
+            return
+        logger.info("Message deleted: id=%s", message_id)
+        self.message_deleted.emit(message_id)
+
+    @Slot(str)
+    def create_ban(self, ip: str) -> None:
+        """Ban a guestbook IP and report the outcome."""
+        try:
+            data = self._service.create_message_ban(ip)
+        except ApiError as exc:
+            logger.warning("Ban create failed: ip=%s %s", ip, exc.message)
+            self.ban_create_failed.emit(exc.message)
+            return
+        logger.info("Guestbook IP banned: %s", ip)
+        self.ban_created.emit(data)
+
+    @Slot(int)
+    def delete_ban(self, ban_id: int) -> None:
+        """Remove one guestbook IP ban and report the outcome."""
+        try:
+            self._service.delete_message_ban(ban_id)
+        except ApiError as exc:
+            logger.warning("Ban delete failed: id=%s %s", ban_id, exc.message)
+            self.ban_delete_failed.emit(exc.message)
+            return
+        logger.info("Guestbook IP unbanned: id=%s", ban_id)
+        self.ban_deleted.emit(ban_id)
 
     @Slot(object)
     def apply_settings(self, settings: ApiSettings) -> None:

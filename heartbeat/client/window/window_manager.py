@@ -224,11 +224,15 @@ class WindowManager(QObject):
         loaders: dict[int, Callable[[], None]] = {
             PAGE_DIARIES: self._window.diary.load_requested.emit,
             PAGE_FRIENDS: self._window.friends.load_requested.emit,
-            PAGE_MESSAGES: self._window.messages.load_requested.emit,
+            PAGE_MESSAGES: self._load_messages_page,
         }
         loader = loaders.get(index)
         if loader is not None:
             loader()
+
+    def _load_messages_page(self) -> None:
+        self._window.messages.load_requested.emit()
+        self._window.messages.bans_requested.emit()
 
     def _api_settings(self, api_key: str) -> ApiSettings:
         return ApiSettings(
@@ -313,9 +317,36 @@ class WindowManager(QObject):
         self._api_worker.friend_delete_failed.connect(friends.show_error)
         messages = self._window.messages
         messages.load_requested.connect(self._message_worker.refresh)
+        messages.bans_requested.connect(self._message_worker.load_bans)
+        messages.delete_requested.connect(self._message_worker.delete_message)
+        messages.ban_requested.connect(self._message_worker.create_ban)
+        messages.unban_requested.connect(self._message_worker.delete_ban)
         self._message_worker.messages_loaded.connect(messages.apply_messages)
         self._message_worker.messages_failed.connect(messages.show_error)
         self._message_worker.message_arrived.connect(self._on_message_arrived)
+        self._message_worker.message_deleted.connect(self._on_message_mutated)
+        self._message_worker.message_delete_failed.connect(messages.show_error)
+        self._message_worker.bans_loaded.connect(messages.apply_bans)
+        self._message_worker.bans_failed.connect(messages.show_error)
+        self._message_worker.ban_created.connect(self._on_ban_mutated)
+        self._message_worker.ban_create_failed.connect(messages.show_error)
+        self._message_worker.ban_deleted.connect(self._on_ban_removed)
+        self._message_worker.ban_delete_failed.connect(messages.show_error)
+
+    @Slot(int)
+    def _on_message_mutated(self, _message_id: int) -> None:
+        """Reload the message list after a delete."""
+        self._window.messages.load_requested.emit()
+
+    @Slot(object)
+    def _on_ban_mutated(self, _row: object) -> None:
+        """Reload messages and bans after a ban is created."""
+        self._load_messages_page()
+
+    @Slot(int)
+    def _on_ban_removed(self, _ban_id: int) -> None:
+        """Reload messages and bans after a ban is removed."""
+        self._load_messages_page()
 
     @Slot(object)
     def _on_message_arrived(self, row: object) -> None:
