@@ -318,6 +318,9 @@ class SiteOut(SQLModel):
     show_heatmap: bool = True
     tags_title: str = "标签"
     tags: list[str] = Field(default_factory=list)
+    show_icp: bool = False
+    icp_text: str = ""
+    icp_keyword: str = ""
 
 
 class SiteUpdate(SQLModel):
@@ -329,6 +332,9 @@ class SiteUpdate(SQLModel):
     show_heatmap: bool | None = None
     tags_title: str | None = Field(default=None, min_length=1, max_length=80)
     tags: list[str] | None = None
+    show_icp: bool | None = None
+    icp_text: str | None = Field(default=None, max_length=80)
+    icp_keyword: str | None = Field(default=None, max_length=64)
 
     @field_validator("title", "process_title", "tags_title")
     @classmethod

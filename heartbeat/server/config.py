@@ -22,6 +22,8 @@ DEFAULT_SITE_TITLE = "HeartBeat"
 DEFAULT_SITE_TAGLINE = "个人主页与实时状态"
 DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
 DEFAULT_SITE_TAGS_TITLE = "标签"
+DEFAULT_SITE_ICP_TEXT = "萌ICP备20263011号"
+DEFAULT_SITE_ICP_KEYWORD = "20263011"
 
 _settings_cache: Settings | None = None
 
@@ -108,6 +110,8 @@ def load_site_settings() -> dict[str, Any]:
     tags = [str(item).strip() for item in tags_raw] if isinstance(tags_raw, list) else []
     show_raw = data.get("show_heatmap")
     show_heatmap = show_raw if isinstance(show_raw, bool) else True
+    show_icp_raw = data.get("show_icp")
+    show_icp = show_icp_raw if isinstance(show_icp_raw, bool) else False
     return {
         "title": _site_value(data, "title", DEFAULT_SITE_TITLE),
         "tagline": _site_value(data, "tagline", DEFAULT_SITE_TAGLINE),
@@ -115,6 +119,9 @@ def load_site_settings() -> dict[str, Any]:
         "show_heatmap": show_heatmap,
         "tags_title": _site_value(data, "tags_title", DEFAULT_SITE_TAGS_TITLE),
         "tags": [item for item in tags if item],
+        "show_icp": show_icp,
+        "icp_text": _site_value(data, "icp_text", DEFAULT_SITE_ICP_TEXT),
+        "icp_keyword": _site_value(data, "icp_keyword", DEFAULT_SITE_ICP_KEYWORD),
     }
 
 

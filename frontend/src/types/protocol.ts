@@ -123,6 +123,9 @@ export interface SiteInfo {
   show_heatmap: boolean
   tags_title: string
   tags: string[]
+  show_icp: boolean
+  icp_text: string
+  icp_keyword: string
 }
 
 export interface ApiError {

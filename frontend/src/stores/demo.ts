@@ -180,5 +180,8 @@ export function demoSite(): SiteInfo {
     show_heatmap: true,
     tags_title: "标签",
     tags: ["音乐", "旅行", "摄影", "独立游戏"],
+    show_icp: true,
+    icp_text: "萌ICP备20263011号",
+    icp_keyword: "20263011",
   }
 }

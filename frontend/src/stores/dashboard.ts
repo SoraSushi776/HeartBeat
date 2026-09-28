@@ -48,6 +48,9 @@ export class DashboardStore {
     show_heatmap: true,
     tags_title: "标签",
     tags: [],
+    show_icp: false,
+    icp_text: "萌ICP备20263011号",
+    icp_keyword: "20263011",
   })
 
   private stream: StatusStream | null = null
@@ -84,6 +87,9 @@ export class DashboardStore {
         show_heatmap: data.show_heatmap !== false,
         tags_title: data.tags_title || "标签",
         tags: data.tags ?? [],
+        show_icp: data.show_icp === true,
+        icp_text: data.icp_text || "萌ICP备20263011号",
+        icp_keyword: data.icp_keyword || "20263011",
       }
     } catch {
       return

@@ -12,6 +12,12 @@ const friends = computed(() =>
 
 const brand = computed(() => store.site.value.title || "HeartBeat")
 const tagline = computed(() => store.site.value.tagline || "")
+const showIcp = computed(() => store.site.value.show_icp === true)
+const icpText = computed(() => store.site.value.icp_text || "萌ICP备20263011号")
+const icpKeyword = computed(() => store.site.value.icp_keyword || "20263011")
+const icpUrl = computed(
+  () => `https://icp.gov.moe/?keyword=${encodeURIComponent(icpKeyword.value)}`,
+)
 </script>
 
 <template>
@@ -36,6 +42,15 @@ const tagline = computed(() => store.site.value.tagline || "")
             />
           </svg>
           GitHub 仓库
+        </a>
+        <a
+          v-if="showIcp"
+          class="icp-link"
+          :href="icpUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {{ icpText }}
         </a>
       </div>
       <div class="links-col">
@@ -122,6 +137,20 @@ const tagline = computed(() => store.site.value.tagline || "")
 
 .repo-link:hover {
   background: var(--md-sys-color-surface-container-highest);
+}
+
+.icp-link {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.82rem;
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+.icp-link:hover {
+  color: var(--md-sys-color-primary);
+  text-decoration: underline;
 }
 
 .links-col {

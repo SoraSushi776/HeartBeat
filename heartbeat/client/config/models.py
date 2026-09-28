@@ -181,6 +181,8 @@ DEFAULT_SITE_TITLE = "HeartBeat"
 DEFAULT_SITE_TAGLINE = "个人主页与实时状态"
 DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
 DEFAULT_SITE_TAGS_TITLE = "标签"
+DEFAULT_SITE_ICP_TEXT = "萌ICP备20263011号"
+DEFAULT_SITE_ICP_KEYWORD = "20263011"
 
 
 @dataclass
@@ -191,6 +193,9 @@ class SiteConfig:
     show_heatmap: bool = True
     tags_title: str = DEFAULT_SITE_TAGS_TITLE
     tags: list[str] = field(default_factory=list)
+    show_icp: bool = False
+    icp_text: str = DEFAULT_SITE_ICP_TEXT
+    icp_keyword: str = DEFAULT_SITE_ICP_KEYWORD
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SiteConfig:
@@ -201,6 +206,9 @@ class SiteConfig:
             show_heatmap=_as_bool(data.get("show_heatmap"), True),
             tags_title=_as_str(data.get("tags_title"), DEFAULT_SITE_TAGS_TITLE),
             tags=_as_str_list(data.get("tags")),
+            show_icp=_as_bool(data.get("show_icp"), False),
+            icp_text=_as_str(data.get("icp_text"), DEFAULT_SITE_ICP_TEXT),
+            icp_keyword=_as_str(data.get("icp_keyword"), DEFAULT_SITE_ICP_KEYWORD),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -211,6 +219,9 @@ class SiteConfig:
             "show_heatmap": self.show_heatmap,
             "tags_title": self.tags_title,
             "tags": list(self.tags),
+            "show_icp": self.show_icp,
+            "icp_text": self.icp_text,
+            "icp_keyword": self.icp_keyword,
         }
 
 
