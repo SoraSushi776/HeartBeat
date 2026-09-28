@@ -53,14 +53,13 @@ const tagline = computed(() => store.site.value.tagline || "")
 
 <style scoped>
 .site-footer {
-  margin-top: 36px;
-  margin-left: calc(-1 * var(--page-pad-x));
-  margin-right: calc(-1 * var(--page-pad-x));
-  margin-bottom: calc(-1 * var(--page-pad-bottom));
-  padding: 32px var(--page-pad-x) 20px;
+  width: 100%;
+  margin: 0;
+  padding: 32px max(var(--page-pad-x), calc((100% - var(--page-max)) / 2 + var(--page-pad-x))) 24px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface-variant);
+  box-sizing: border-box;
 }
 
 .footer-inner {

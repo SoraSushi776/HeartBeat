@@ -96,8 +96,8 @@ onMounted(() => {
     <main class="content">
       <RouterView />
     </main>
-    <SiteFooter />
   </div>
+  <SiteFooter />
 </template>
 
 <style scoped>
@@ -116,7 +116,7 @@ onMounted(() => {
 .page {
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--page-pad-y) var(--page-pad-x) var(--page-pad-bottom);
+  padding: var(--page-pad-y) var(--page-pad-x) 28px;
 }
 
 .header {
