@@ -75,6 +75,13 @@ class ApiService:
         """Delete a friend link and return the ack payload."""
         return self._request("DELETE", f"/friends/{friend_id}")
 
+    def set_github_token(self, token: str, login: str = "") -> dict[str, Any]:
+        """Push the GitHub PAT to the server for heatmap and README cache."""
+        payload: dict[str, Any] = {"token": token}
+        if login:
+            payload["login"] = login
+        return self._request("POST", "/github/token", json=payload)
+
     def _request(self, method: str, path: str, json: dict[str, Any] | None = None) -> Any:
         url = f"{self._base_url}{API_PREFIX}{path}"
         try:

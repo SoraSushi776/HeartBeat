@@ -14,13 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 class SecretStore(Protocol):
-    """Api key storage backend."""
+    """Secret storage backend for api key and GitHub PAT."""
 
     def load_api_key(self) -> str:
         """Return the stored api_key or empty string."""
 
     def save_api_key(self, value: str) -> None:
         """Persist the api_key."""
+
+    def load_github_token(self) -> str:
+        """Return the stored github_token or empty string."""
+
+    def save_github_token(self, value: str) -> None:
+        """Persist the github_token."""
+
+    def load_github_login(self) -> str:
+        """Return the stored github_login or empty string."""
+
+    def save_github_login(self, value: str) -> None:
+        """Persist the github_login."""
 
 
 class ConfigStore:
@@ -66,23 +78,47 @@ class ConfigStore:
 
 
 class JsonSecretStore:
-    """Persist api_key in client.secrets.json with restricted permissions."""
+    """Persist secrets in client.secrets.json with restricted permissions."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
 
     def load_api_key(self) -> str:
         """Return the stored api_key or an empty string."""
-        data = self._read_json()
-        value = data.get("api_key")
-        return value if isinstance(value, str) else ""
+        return self._read_value("api_key")
 
     def save_api_key(self, value: str) -> None:
         """Write api_key to secrets file and chmod 0600."""
+        self._write_value("api_key", value)
+
+    def load_github_token(self) -> str:
+        """Return the stored github_token or an empty string."""
+        return self._read_value("github_token")
+
+    def save_github_token(self, value: str) -> None:
+        """Write github_token to secrets file and chmod 0600."""
+        self._write_value("github_token", value)
+
+    def load_github_login(self) -> str:
+        """Return the stored github_login or an empty string."""
+        return self._read_value("github_login")
+
+    def save_github_login(self, value: str) -> None:
+        """Write github_login to secrets file and chmod 0600."""
+        self._write_value("github_login", value)
+
+    def _read_value(self, key: str) -> str:
+        data = self._read_json()
+        value = data.get(key)
+        return value if isinstance(value, str) else ""
+
+    def _write_value(self, key: str, value: str) -> None:
         ensure_config_dir()
-        self._path.write_text(json.dumps({"api_key": value}, ensure_ascii=False), encoding="utf-8")
+        data = self._read_json()
+        data[key] = value
+        self._path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         os.chmod(self._path, 0o600)
-        logger.info("Api key saved: %s", self._path)
+        logger.info("Secret saved: %s", key)
 
     def _read_json(self) -> dict[str, Any]:
         if not self._path.exists():

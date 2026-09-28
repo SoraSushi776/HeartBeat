@@ -23,7 +23,7 @@ PAGE_FRIENDS = 3
 class WindowManager(QObject):
     """Own the main window, API worker thread, and setup wizard lifecycle."""
 
-    config_saved = Signal(object, str)
+    config_saved = Signal(object, str, str, str)
     api_settings_changed = Signal(object)
     language_changed = Signal(str)
 
@@ -90,7 +90,12 @@ class WindowManager(QObject):
     @Slot()
     def show_settings(self) -> None:
         """Show the main window with current values."""
-        self._window.apply_config(self._config, self._secret_store.load_api_key())
+        self._window.apply_config(
+            self._config,
+            self._secret_store.load_api_key(),
+            self._secret_store.load_github_token(),
+            self._secret_store.load_github_login(),
+        )
         self._window.show()
         self._window.raise_()
         self._window.activateWindow()
@@ -119,14 +124,23 @@ class WindowManager(QObject):
         wizard.setup_finished.connect(self._on_setup_finished)
         wizard.exec()
 
-    @Slot(object, str)
-    def _on_save(self, config: AppConfig, api_key: str) -> None:
+    @Slot(object, str, str, str)
+    def _on_save(
+        self,
+        config: AppConfig,
+        api_key: str,
+        github_token: str,
+        github_login: str,
+    ) -> None:
         self._config = config
         self._config_store.save(config)
         self._secret_store.save_api_key(api_key)
+        self._secret_store.save_github_token(github_token)
+        self._secret_store.save_github_login(github_login)
         self._sync_autostart()
-        self.config_saved.emit(config, api_key)
+        self.config_saved.emit(config, api_key, github_token, github_login)
         self.api_settings_changed.emit(self._api_settings(api_key))
+        self._push_github_token(github_token, github_login)
         logger.info("Settings saved")
 
     @Slot()
@@ -138,9 +152,25 @@ class WindowManager(QObject):
         self._config.ui.language = language
         self._config_store.save(self._config)
         self._window.set_language(language)
-        self.config_saved.emit(self._config, self._secret_store.load_api_key())
+        self.config_saved.emit(
+            self._config,
+            self._secret_store.load_api_key(),
+            self._secret_store.load_github_token(),
+            self._secret_store.load_github_login(),
+        )
         self.language_changed.emit(language)
         logger.info("UI language changed: %s", language)
+
+    def _push_github_token(self, token: str, login: str) -> None:
+        """Upload the GitHub PAT to the server after a successful local save."""
+        if not token:
+            return
+        try:
+            service = ApiService.from_settings(self._api_settings(self._secret_store.load_api_key()))
+            service.set_github_token(token, login)
+            logger.info("GitHub token pushed to server")
+        except Exception:
+            logger.exception("GitHub token push failed")
 
     @Slot(str, str)
     def _on_setup_finished(self, base_url: str, api_key: str) -> None:
@@ -148,8 +178,18 @@ class WindowManager(QObject):
         self._config.setup_completed = True
         self._config_store.save(self._config)
         self._secret_store.save_api_key(api_key)
-        self._window.apply_config(self._config, api_key)
-        self.config_saved.emit(self._config, api_key)
+        self._window.apply_config(
+            self._config,
+            api_key,
+            self._secret_store.load_github_token(),
+            self._secret_store.load_github_login(),
+        )
+        self.config_saved.emit(
+            self._config,
+            api_key,
+            self._secret_store.load_github_token(),
+            self._secret_store.load_github_login(),
+        )
         self.api_settings_changed.emit(self._api_settings(api_key))
         logger.info("Setup wizard completed")
 

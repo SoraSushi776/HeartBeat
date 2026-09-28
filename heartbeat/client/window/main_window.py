@@ -32,7 +32,7 @@ LANGUAGE_LABELS: tuple[str, ...] = ("中文", "English")
 class MainWindow(QMainWindow):
     """Host settings, diagnostics, diary, and friend panels behind a nav rail."""
 
-    save_requested = Signal(object, str)
+    save_requested = Signal(object, str, str, str)
     close_requested = Signal()
     diagnostics_refresh_requested = Signal()
     language_change_requested = Signal(str)
@@ -68,9 +68,15 @@ class MainWindow(QMainWindow):
     def translator(self) -> Translator:
         return self._t
 
-    def apply_config(self, config: AppConfig, api_key: str) -> None:
+    def apply_config(
+        self,
+        config: AppConfig,
+        api_key: str,
+        github_token: str = "",
+        github_login: str = "",
+    ) -> None:
         """Load config values into the settings form."""
-        self._settings.apply_config(config, api_key)
+        self._settings.apply_config(config, api_key, github_token, github_login)
 
     def apply_diagnostics(self, snapshot: DiagnosticsSnapshot) -> None:
         """Push a live snapshot into the diagnostics panel."""

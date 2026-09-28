@@ -71,8 +71,14 @@ class CollectorWorker(QObject):
         self.finished.emit()
         logger.info("Collector worker stopped")
 
-    @Slot(object)
-    def apply_config(self, config: AppConfig) -> None:
+    @Slot(object, str, str, str)
+    def apply_config(
+        self,
+        config: AppConfig,
+        api_key: str = "",
+        github_token: str = "",
+        github_login: str = "",
+    ) -> None:
         """Replace runtime config and restart scheduling when needed."""
         self._config = config
         self._gate.set_config(config.privacy)

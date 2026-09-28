@@ -23,7 +23,7 @@ from heartbeat.client.i18n import Translator
 class SettingsView(QWidget):
     """Settings form assembled in code and driven entirely by config fields."""
 
-    save_requested = Signal(object, str)
+    save_requested = Signal(object, str, str, str)
     close_requested = Signal()
 
     def __init__(self, translator: Translator) -> None:
@@ -33,6 +33,9 @@ class SettingsView(QWidget):
         self._url_edit = QLineEdit()
         self._api_key_edit = QLineEdit()
         self._api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._github_token_edit = QLineEdit()
+        self._github_token_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._github_login_edit = QLineEdit()
         self._push_enabled = QCheckBox()
         self._interval_spin = QSpinBox()
         self._interval_spin.setRange(5, 3600)
@@ -60,6 +63,8 @@ class SettingsView(QWidget):
         self._general_group = QGroupBox()
         self._url_label = QLabel()
         self._api_key_label = QLabel()
+        self._github_token_label = QLabel()
+        self._github_login_label = QLabel()
         self._interval_label = QLabel()
         self._blur_label = QLabel()
         self._scale_label = QLabel()
@@ -70,11 +75,19 @@ class SettingsView(QWidget):
         self._save_button.clicked.connect(self._on_save)
         self._cancel_button.clicked.connect(self.close_requested.emit)
 
-    def apply_config(self, config: AppConfig, api_key: str) -> None:
+    def apply_config(
+        self,
+        config: AppConfig,
+        api_key: str,
+        github_token: str = "",
+        github_login: str = "",
+    ) -> None:
         """Load config values into the form widgets."""
         self._base = config
         self._url_edit.setText(config.server.base_url)
         self._api_key_edit.setText(api_key)
+        self._github_token_edit.setText(github_token)
+        self._github_login_edit.setText(github_login)
         self._push_enabled.setChecked(config.push.enabled)
         self._interval_spin.setValue(config.push.interval_seconds)
         self._collect_screenshot.setChecked(config.privacy.collect_screenshot)
@@ -97,6 +110,8 @@ class SettingsView(QWidget):
         self._general_group.setTitle(self._t.tr("settings.general"))
         self._url_label.setText(self._t.tr("settings.base_url"))
         self._api_key_label.setText(self._t.tr("settings.api_key"))
+        self._github_token_label.setText(self._t.tr("settings.github_token"))
+        self._github_login_label.setText(self._t.tr("settings.github_login"))
         self._interval_label.setText(self._t.tr("settings.interval"))
         self._blur_label.setText(self._t.tr("settings.blur_radius"))
         self._scale_label.setText(self._t.tr("settings.scale"))
@@ -125,7 +140,9 @@ class SettingsView(QWidget):
     def _on_save(self) -> None:
         self._apply_form()
         api_key = self._api_key_edit.text().strip()
-        self.save_requested.emit(self._base, api_key)
+        github_token = self._github_token_edit.text().strip()
+        github_login = self._github_login_edit.text().strip()
+        self.save_requested.emit(self._base, api_key, github_token, github_login)
 
     def _apply_form(self) -> None:
         self._base.server.base_url = self._url_edit.text().strip()
@@ -163,6 +180,8 @@ class SettingsView(QWidget):
         form = QFormLayout(self._server_group)
         form.addRow(self._url_label, self._url_edit)
         form.addRow(self._api_key_label, self._api_key_edit)
+        form.addRow(self._github_token_label, self._github_token_edit)
+        form.addRow(self._github_login_label, self._github_login_edit)
         return self._server_group
 
     def _build_push_group(self) -> QGroupBox:
