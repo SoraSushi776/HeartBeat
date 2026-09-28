@@ -8,6 +8,7 @@ import GithubPanel from "./components/GithubPanel.vue"
 import Heatmap from "./components/Heatmap.vue"
 import DiaryTimeline from "./components/DiaryTimeline.vue"
 import FriendLinks from "./components/FriendLinks.vue"
+import MessageBoard from "./components/MessageBoard.vue"
 import { useDashboard, useDashboardLifecycle } from "./stores/dashboard"
 import { resolveAssetUrl } from "./utils/url"
 
@@ -126,6 +127,7 @@ function onThemeClick(): void {
         <div class="tile tile-diary"><DiaryTimeline /></div>
         <div class="tile tile-friends"><FriendLinks /></div>
       </div>
+      <div class="tile tile-message"><MessageBoard /></div>
     </main>
   </div>
 </template>
@@ -220,6 +222,10 @@ function onThemeClick(): void {
 }
 
 .tile-heatmap {
+  width: 100%;
+}
+
+.tile-message {
   width: 100%;
 }
 

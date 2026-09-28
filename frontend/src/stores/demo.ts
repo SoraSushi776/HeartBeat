@@ -2,6 +2,7 @@ import type {
   Diary,
   FriendLink,
   GithubData,
+  Message,
   ProcessInfo,
   StatusData,
 } from "../types/protocol"
@@ -92,6 +93,30 @@ export function demoDiaries(): Diary[] {
       tags: ["project"],
       created_ts: now - 3 * 86_400_000,
       updated_ts: now - 3 * 86_400_000,
+    },
+  ]
+}
+
+export function demoMessages(): Message[] {
+  const now = Date.now()
+  return [
+    {
+      id: 3,
+      author: "路过的旅人",
+      content: "这个仪表盘做得真好看，热力图很酷！",
+      created_ts: now - 1_800_000,
+    },
+    {
+      id: 2,
+      author: "",
+      content: "深夜还在写代码，注意休息呀。",
+      created_ts: now - 7_200_000,
+    },
+    {
+      id: 1,
+      author: "Sora",
+      content: "留言板上线了，欢迎来逛逛。",
+      created_ts: now - 86_400_000,
     },
   ]
 }

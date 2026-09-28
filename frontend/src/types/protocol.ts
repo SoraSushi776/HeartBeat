@@ -72,6 +72,20 @@ export interface FriendLink {
   sort?: number
 }
 
+export interface Message {
+  id: number
+  author: string
+  content: string
+  created_ts: number
+}
+
+export interface MessageList {
+  items: Message[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface ContributionDay {
   date: string
   count: number

@@ -1,16 +1,26 @@
 import { computed, inject, onMounted, onUnmounted, ref, shallowRef, type InjectionKey } from "vue"
-import { fetchBackground, fetchDiaries, fetchFriends, fetchGithub, fetchStatus } from "../api/http"
+import {
+  createMessage,
+  fetchBackground,
+  fetchDiaries,
+  fetchFriends,
+  fetchGithub,
+  fetchMessages,
+  fetchStatus,
+} from "../api/http"
 import { StatusStream, type StreamMode } from "../api/stream"
 import {
   demoDiaries,
   demoFriends,
   demoGithub,
+  demoMessages,
   demoStatus,
 } from "./demo"
 import type {
   Diary,
   FriendLink,
   GithubData,
+  Message,
   SnapshotEvent,
   StatusData,
 } from "../types/protocol"
@@ -22,6 +32,7 @@ export class DashboardStore {
   readonly status = shallowRef<StatusData | null>(null)
   readonly diaries = ref<Diary[]>([])
   readonly friends = ref<FriendLink[]>([])
+  readonly messages = ref<Message[]>([])
   readonly github = shallowRef<GithubData | null>(null)
   readonly nowMs = ref(Date.now())
   readonly streamMode = ref<StreamMode>("idle")
@@ -39,12 +50,13 @@ export class DashboardStore {
     return ts > 0 && this.nowMs.value - ts < ONLINE_WINDOW_MS
   })
 
-  /** 首屏并行拉取状态、日记、友链与 GitHub 资料 */
+  /** 首屏并行拉取状态、日记、友链、留言与 GitHub 资料 */
   async loadAll(): Promise<void> {
     await Promise.all([
       this.loadStatus(),
       this.loadDiaries(),
       this.loadFriends(),
+      this.loadMessages(),
       this.loadGithub(),
       this.loadBackground(),
     ])
@@ -88,6 +100,22 @@ export class DashboardStore {
     } catch {
       this.friends.value = demoFriends()
     }
+  }
+
+  /** 拉取留言列表 */
+  async loadMessages(): Promise<void> {
+    try {
+      const list = await fetchMessages()
+      this.messages.value = list.items
+    } catch {
+      this.messages.value = demoMessages()
+    }
+  }
+
+  /** 发布留言并在成功后刷新列表 */
+  async sendMessage(author: string, content: string): Promise<void> {
+    await createMessage({ author: author || undefined, content })
+    await this.loadMessages()
   }
 
   /** 拉取 GitHub 缓存资料 */

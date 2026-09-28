@@ -3,6 +3,8 @@ import type {
   DiaryList,
   FriendLink,
   GithubData,
+  Message,
+  MessageList,
   StatusData,
 } from "../types/protocol"
 
@@ -39,6 +41,20 @@ export function fetchFriends(): Promise<FriendLink[]> {
 /** 拉取服务端缓存的 GitHub 资料 */
 export function fetchGithub(): Promise<GithubData> {
   return requestJson<GithubData>("/api/v1/github")
+}
+
+/** 拉取留言分页列表 */
+export function fetchMessages(limit = 50, offset = 0): Promise<MessageList> {
+  return requestJson<MessageList>(`/api/v1/messages?limit=${limit}&offset=${offset}`)
+}
+
+/** 发布一条留言 */
+export function createMessage(payload: { author?: string; content: string }): Promise<Message> {
+  return requestJson<Message>("/api/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
 }
 
 /** 拉取站点背景图 URL */
