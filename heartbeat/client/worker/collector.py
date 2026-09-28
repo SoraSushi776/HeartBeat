@@ -11,6 +11,7 @@ from heartbeat.adapters.platform import current_platform
 from heartbeat.client.config.models import AppConfig
 from heartbeat.client.config.store import SecretStore
 from heartbeat.client.diagnostics import DiagnosticsSnapshot, read_cover_bytes
+from heartbeat.media_art import to_cover_jpeg
 from heartbeat.client.privacy import PrivacyGate
 from heartbeat.client.worker.sources import CollectorBundle, create_collectors
 from heartbeat.protocol.models import (
@@ -94,12 +95,14 @@ class CollectorWorker(QObject):
     def collect_diagnostics(self) -> None:
         """Emit a live local snapshot for the diagnostics panel."""
         media = self._collect_media()
-        cover_url = media.cover_url if media else None
+        cover = media.cover_bytes if media else None
+        if cover is None and media is not None:
+            cover = read_cover_bytes(media.cover_url)
         snapshot = DiagnosticsSnapshot(
             media=media,
             processes=self._collect_processes(),
             system=self._collect_system(),
-            cover_bytes=read_cover_bytes(cover_url),
+            cover_bytes=cover,
         )
         self.diagnostics_ready.emit(snapshot)
 
@@ -108,23 +111,32 @@ class CollectorWorker(QObject):
 
     @Slot()
     def _on_tick(self) -> None:
-        payload, screenshot = self._build_payload()
+        payload, screenshot, cover_jpeg = self._build_payload()
+        if cover_jpeg is not None:
+            cover_url = self._put_cover(cover_jpeg)
+            media = payload.get("media")
+            if cover_url and isinstance(media, dict):
+                media["cover_url"] = cover_url
         self.snapshot_ready.emit(payload)
         self._push_payload(payload, screenshot)
 
-    def _build_payload(self) -> tuple[dict[str, Any], ScreenshotResult | None]:
+    def _build_payload(self) -> tuple[dict[str, Any], ScreenshotResult | None, bytes | None]:
         flags = self._gate.flags()
         client = ClientInfo(id=self._config.client_id, platform=current_platform())
         screenshot = self._collect_screenshot()
+        media = self._collect_media()
+        cover_jpeg = to_cover_jpeg(media.cover_bytes if media else None)
+        if media is not None:
+            media.cover_url = None
         payload = HeartbeatPayload(
             ts=int(time.time() * 1000),
             client=client,
             system=self._collect_system(),
-            media=self._collect_media(),
+            media=media,
             processes=self._collect_processes(),
             privacy=flags,
         )
-        return payload.to_dict(), screenshot
+        return payload.to_dict(), screenshot, cover_jpeg
 
     def _collect_screenshot(self) -> ScreenshotResult | None:
         return self._collectors.screenshot.collect(self._gate.adapter_gate)
@@ -153,6 +165,28 @@ class CollectorWorker(QObject):
         upload_url = data.get("screenshot_upload_url")
         if upload_url and screenshot is not None:
             self._put_screenshot(str(upload_url), payload.get("ts"), screenshot)
+
+    def _put_cover(self, jpeg: bytes) -> str | None:
+        url = f"{self._base_url()}{API_PREFIX}/cover/{self._config.client_id}"
+        try:
+            response = httpx.put(
+                url,
+                content=jpeg,
+                headers={**self._headers(), "Content-Type": "image/jpeg"},
+                timeout=self._config.server.timeout_seconds,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError:
+            logger.exception("Cover upload failed")
+            return None
+        body = response.json()
+        if not isinstance(body, dict):
+            return None
+        data = body.get("data")
+        if isinstance(data, dict):
+            value = data.get("url")
+            return value if isinstance(value, str) else None
+        return None
 
     def _backoff_seconds(self) -> int:
         table = self._config.push.retry_backoff_seconds

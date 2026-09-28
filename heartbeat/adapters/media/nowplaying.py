@@ -20,7 +20,6 @@ _BINARY_CANDIDATES: tuple[str, ...] = (
 )
 
 _TIMEOUT_S = 2.0
-_ARTWORK_MAX_BYTES = 24_000
 
 _STATE_BY_RATE: dict[bool, MediaState] = {
     True: MediaState.PLAYING,
@@ -67,7 +66,7 @@ def parse_nowplaying_json(raw: str) -> MediaInfo:
         artist=artist,
         album=album,
         app=_app_name(data.get("clientBundleIdentifier")),
-        cover_url=_artwork_data_url(data.get("artworkData")),
+        cover_bytes=_artwork_bytes(data.get("artworkData")),
         duration_ms=_seconds_to_ms(data.get("duration")),
         position_ms=_seconds_to_ms(data.get("elapsedTime")),
     )
@@ -97,20 +96,14 @@ def _seconds_to_ms(value: object) -> int | None:
     return int(float(value) * 1000)
 
 
-def _artwork_data_url(value: object) -> str | None:
+def _artwork_bytes(value: object) -> bytes | None:
     text = _as_str(value)
     if not text:
         return None
     try:
-        raw = base64.b64decode(text)
+        return base64.b64decode(text) or None
     except (ValueError, TypeError):
         return None
-    if not raw:
-        return None
-    if len(raw) > _ARTWORK_MAX_BYTES:
-        raw = raw[:_ARTWORK_MAX_BYTES]
-    encoded = base64.b64encode(raw).decode("ascii")
-    return f"data:image/jpeg;base64,{encoded}"
 
 
 class NowPlayingMediaAdapter:

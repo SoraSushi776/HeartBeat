@@ -82,7 +82,7 @@ class CollectorWorkerTest(unittest.TestCase):
         gate = PrivacyGate(config.privacy)
         collectors = create_collectors(config.process_whitelist, config.screenshot)
         worker = CollectorWorker(config, secrets, gate, collectors)
-        payload, screenshot = worker._build_payload()
+        payload, screenshot, cover_jpeg = worker._build_payload()
         self.assertIsNone(screenshot)
         self.assertIsNone(payload["system"])
         self.assertIsNone(payload["media"])

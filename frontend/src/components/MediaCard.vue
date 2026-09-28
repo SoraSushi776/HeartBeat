@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useDashboard } from "../stores/dashboard"
 import { formatDuration } from "../utils/format"
+import { resolveAssetUrl } from "../utils/url"
 
 const store = useDashboard()
 const media = computed(() => store.status.value?.media ?? null)
@@ -18,6 +19,7 @@ const STATE_TEXT: Record<string, string> = {
 }
 
 const stateText = computed(() => STATE_TEXT[media.value?.state ?? "idle"] ?? "暂无播放")
+const coverSrc = computed(() => resolveAssetUrl(media.value?.cover_url))
 
 const progressRatio = computed(() => {
   const duration = media.value?.duration_ms ?? 0
@@ -26,13 +28,6 @@ const progressRatio = computed(() => {
   }
   return Math.min(1, displayPosition.value / duration)
 })
-
-const bars = Array.from({ length: 28 }, (_, index) => ({
-  height: 28 + ((index * 37) % 48),
-  delay: `${(index % 7) * 0.12}s`,
-}))
-
-const playState = computed(() => (media.value?.state === "playing" ? "running" : "paused"))
 
 function trackKeyOf(value: typeof media.value): string {
   return [value?.title, value?.artist, value?.album, value?.app].join("|")
@@ -56,7 +51,6 @@ function syncPosition(force = false): void {
   }
 }
 
-/** 按帧推进本地播放进度，服务端数据到达时校正 */
 function tick(timestamp: number): void {
   const delta = lastTickTs ? timestamp - lastTickTs : 16
   lastTickTs = timestamp
@@ -87,16 +81,8 @@ onUnmounted(() => cancelAnimationFrame(frame))
     </h2>
     <div v-if="media && media.state !== 'idle'" class="media-body">
       <div class="cover-wrap">
-        <img v-if="media.cover_url" class="cover" :src="media.cover_url" alt="专辑封面" />
+        <img v-if="coverSrc" class="cover" :src="coverSrc" alt="专辑封面" />
         <div v-else class="cover cover-empty"></div>
-        <div class="wave" :style="{ '--play-state': playState }" aria-hidden="true">
-          <span
-            v-for="(bar, index) in bars"
-            :key="index"
-            class="bar"
-            :style="{ height: `${bar.height}%`, animationDelay: bar.delay }"
-          ></span>
-        </div>
       </div>
       <div class="meta">
         <div class="title">{{ media.title || "未知曲目" }}</div>
@@ -118,14 +104,20 @@ onUnmounted(() => cancelAnimationFrame(frame))
 </template>
 
 <style scoped>
+.media-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .media-body {
   display: flex;
   gap: 16px;
   align-items: stretch;
+  flex: 1;
 }
 
 .cover-wrap {
-  position: relative;
   width: 112px;
   flex-shrink: 0;
 }
@@ -140,40 +132,6 @@ onUnmounted(() => cancelAnimationFrame(frame))
 
 .cover-empty {
   background: linear-gradient(135deg, var(--md-sys-color-primary-container), var(--md-sys-color-secondary-container));
-}
-
-.wave {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  height: 28px;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  padding: 4px 6px;
-  border-radius: var(--md-sys-shape-corner-small);
-  background: color-mix(in srgb, var(--md-sys-color-surface) 72%, transparent);
-}
-
-.bar {
-  flex: 1;
-  min-width: 2px;
-  border-radius: 2px;
-  background: var(--md-sys-color-primary);
-  transform-origin: bottom;
-  animation: wave 0.9s ease-in-out infinite alternate;
-  animation-play-state: var(--play-state, paused);
-  opacity: 0.9;
-}
-
-@keyframes wave {
-  from {
-    transform: scaleY(0.35);
-  }
-  to {
-    transform: scaleY(1);
-  }
 }
 
 .meta {

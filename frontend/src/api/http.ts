@@ -40,3 +40,8 @@ export function fetchFriends(): Promise<FriendLink[]> {
 export function fetchGithub(): Promise<GithubData> {
   return requestJson<GithubData>("/api/v1/github")
 }
+
+/** 拉取站点背景图 URL */
+export function fetchBackground(): Promise<{ url?: string | null }> {
+  return requestJson<{ url?: string | null }>("/api/v1/background")
+}

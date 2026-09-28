@@ -18,7 +18,16 @@ from heartbeat.logging_util import setup_logging
 from heartbeat.server.config import get_settings
 from heartbeat.server.db import init_db
 from heartbeat.server.envelope import ApiError, error_body
-from heartbeat.server.routers import diaries, friends, github, heartbeat, screenshot, status
+from heartbeat.server.routers import (
+    background,
+    cover,
+    diaries,
+    friends,
+    github,
+    heartbeat,
+    screenshot,
+    status,
+)
 from heartbeat.server.services.scheduler import create_scheduler
 
 logger = logging.getLogger(__name__)
@@ -50,6 +59,8 @@ def create_app() -> FastAPI:
     _register_cors(app, settings.cors_origins)
     app.include_router(heartbeat.router)
     app.include_router(screenshot.router)
+    app.include_router(cover.router)
+    app.include_router(background.router)
     app.include_router(status.router)
     app.include_router(diaries.router)
     app.include_router(friends.router)

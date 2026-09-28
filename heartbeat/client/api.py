@@ -82,6 +82,25 @@ class ApiService:
             payload["login"] = login
         return self._request("POST", "/github/token", json=payload)
 
+    def upload_background(self, data: bytes, content_type: str) -> dict[str, Any]:
+        """Upload a site background image."""
+        url = f"{self._base_url()}{API_PREFIX}/background"
+        try:
+            response = httpx.put(
+                url,
+                content=data,
+                headers={**self._headers(), "Content-Type": content_type},
+                timeout=max(self._timeout, 30.0),
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.warning("Background upload failed")
+            raise ApiError(str(exc)) from exc
+        body = response.json()
+        if not isinstance(body, dict) or not body.get("ok"):
+            raise ApiError(_error_message(body if isinstance(body, dict) else {}, response.status_code))
+        return body.get("data") or {}
+
     def _request(self, method: str, path: str, json: dict[str, Any] | None = None) -> Any:
         url = f"{self._base_url}{API_PREFIX}{path}"
         try:

@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
     """Host settings, diagnostics, diary, and friend panels behind a nav rail."""
 
     save_requested = Signal(object, str, str, str)
+    background_requested = Signal()
     close_requested = Signal()
     diagnostics_refresh_requested = Signal()
     display_list_changed = Signal(list)
@@ -153,6 +154,7 @@ class MainWindow(QMainWindow):
         self._nav.currentRowChanged.connect(self._stack.setCurrentIndex)
         self._nav.currentRowChanged.connect(self.page_changed.emit)
         self._settings.save_requested.connect(self.save_requested.emit)
+        self._settings.background_requested.connect(self.background_requested.emit)
         self._settings.close_requested.connect(self.close_requested.emit)
         self._diagnostics.refresh_requested.connect(self.diagnostics_refresh_requested.emit)
         self._diagnostics.display_list_changed.connect(self.display_list_changed.emit)

@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import { useDashboard } from "../stores/dashboard"
 import { sanitizeHtml } from "../utils/sanitize"
 import { formatTs } from "../utils/format"
 
+const props = defineProps<{ compactHeight?: number | null }>()
+
 const store = useDashboard()
 const github = computed(() => store.github.value)
+const collapsed = ref(false)
 
 const readme = computed(() => {
   const html = github.value?.readme_html
@@ -13,15 +16,42 @@ const readme = computed(() => {
 })
 
 const displayName = computed(() => github.value?.name || github.value?.login || "GitHub")
+
+const compactStyle = computed(() => {
+  if (!collapsed.value || !props.compactHeight) {
+    return {}
+  }
+  return { minHeight: `${props.compactHeight}px` }
+})
+
+watch(
+  () => props.compactHeight,
+  () => {
+    if (collapsed.value) {
+      return
+    }
+  },
+)
 </script>
 
 <template>
-  <section class="card">
-    <h2 class="card-title">GitHub</h2>
+  <section class="card github-card" :class="{ 'is-collapsed': collapsed }" :style="compactStyle">
+    <header class="head">
+      <h2 class="card-title">GitHub</h2>
+      <button type="button" class="btn btn-ghost toggle" @click="collapsed = !collapsed">
+        {{ collapsed ? "展开" : "折叠" }}
+      </button>
+    </header>
     <div v-if="github" class="profile">
       <img v-if="github.avatar_url" class="avatar" :src="github.avatar_url" alt="GitHub 头像" />
       <div class="info">
-        <a v-if="github.html_url" class="name" :href="github.html_url" target="_blank" rel="noopener noreferrer">
+        <a
+          v-if="github.html_url"
+          class="name"
+          :href="github.html_url"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           {{ displayName }}
         </a>
         <div v-else class="name">{{ displayName }}</div>
@@ -32,17 +62,34 @@ const displayName = computed(() => github.value?.name || github.value?.login || 
         </div>
       </div>
     </div>
-    <div v-if="readme" class="readme" v-html="readme"></div>
-    <p v-else class="muted empty">暂无 GitHub 资料</p>
+    <div v-if="readme && !collapsed" class="readme" v-html="readme"></div>
+    <p v-if="!github" class="muted empty">暂无 GitHub 资料</p>
+    <p v-else-if="collapsed && readme" class="muted empty">已折叠 · 点击展开阅读 README</p>
   </section>
 </template>
 
 <style scoped>
+.github-card {
+  height: 100%;
+  overflow: auto;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toggle {
+  flex-shrink: 0;
+}
+
 .profile {
   display: flex;
   gap: 16px;
   align-items: center;
-  margin-bottom: 16px;
+  margin: 8px 0 16px;
 }
 
 .avatar {
@@ -78,38 +125,13 @@ const displayName = computed(() => github.value?.name || github.value?.login || 
 .readme :deep(h2),
 .readme :deep(h3) {
   margin: 1em 0 0.5em;
-  line-height: 1.3;
-}
-
-.readme :deep(img) {
-  max-width: 100%;
-  border-radius: var(--md-sys-shape-corner-small);
-}
-
-.readme :deep(pre) {
-  overflow-x: auto;
-  padding: 12px;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-surface-container-high);
-}
-
-.readme :deep(code) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.88em;
-}
-
-.readme :deep(table) {
-  border-collapse: collapse;
-  max-width: 100%;
-}
-
-.readme :deep(th),
-.readme :deep(td) {
-  border: 1px solid var(--md-sys-color-outline-variant);
-  padding: 6px 10px;
 }
 
 .empty {
   margin: 0;
+}
+
+.is-collapsed {
+  overflow: hidden;
 }
 </style>

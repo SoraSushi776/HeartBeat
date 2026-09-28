@@ -1,5 +1,5 @@
 import { computed, inject, onMounted, onUnmounted, ref, shallowRef, type InjectionKey } from "vue"
-import { fetchDiaries, fetchFriends, fetchGithub, fetchStatus } from "../api/http"
+import { fetchBackground, fetchDiaries, fetchFriends, fetchGithub, fetchStatus } from "../api/http"
 import { StatusStream, type StreamMode } from "../api/stream"
 import {
   demoDiaries,
@@ -27,6 +27,7 @@ export class DashboardStore {
   readonly streamMode = ref<StreamMode>("idle")
   readonly lightboxOpen = ref(false)
   readonly demoMode = ref(false)
+  readonly backgroundUrl = ref("")
 
   private stream: StatusStream | null = null
   private clock: number | null = null
@@ -40,7 +41,23 @@ export class DashboardStore {
 
   /** 首屏并行拉取状态、日记、友链与 GitHub 资料 */
   async loadAll(): Promise<void> {
-    await Promise.all([this.loadStatus(), this.loadDiaries(), this.loadFriends(), this.loadGithub()])
+    await Promise.all([
+      this.loadStatus(),
+      this.loadDiaries(),
+      this.loadFriends(),
+      this.loadGithub(),
+      this.loadBackground(),
+    ])
+  }
+
+  /** 拉取站点背景图 */
+  async loadBackground(): Promise<void> {
+    try {
+      const data = await fetchBackground()
+      this.backgroundUrl.value = data.url ?? ""
+    } catch {
+      this.backgroundUrl.value = ""
+    }
   }
 
   /** 拉取全量实时状态 */

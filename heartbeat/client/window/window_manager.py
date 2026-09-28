@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from heartbeat.client.api import ApiService, ApiSettings
 from heartbeat.client.autostart.base import create_provider
@@ -216,7 +217,31 @@ class WindowManager(QObject):
         self._window.language_change_requested.connect(self._on_language)
         self._window.page_changed.connect(self._on_page_changed)
         self._window.display_list_changed.connect(self._on_display_list)
+        self._window.background_requested.connect(self._on_background_upload)
         self._window.diagnostics.set_display_list(self._config.process_whitelist)
+
+    @Slot()
+    def _on_background_upload(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self._window,
+            self._translator.tr("settings.upload_background"),
+            "",
+            "Images (*.png *.jpg *.jpeg *.webp)",
+        )
+        if not path:
+            return
+        data, content_type = _read_image(path)
+        if data is None:
+            QMessageBox.warning(self._window, self._translator.tr("app.title"), "Unreadable image")
+            return
+        try:
+            service = ApiService.from_settings(self._api_settings(self._secret_store.load_api_key()))
+            service.upload_background(data, content_type)
+            QMessageBox.information(self._window, self._translator.tr("app.title"), "Background updated")
+            logger.info("Background uploaded: %s", path)
+        except Exception:
+            logger.exception("Background upload failed")
+            QMessageBox.warning(self._window, self._translator.tr("app.title"), "Background upload failed")
 
     @Slot(list)
     def _on_display_list(self, names: list) -> None:
@@ -266,3 +291,23 @@ class WindowManager(QObject):
         """Stop the API worker thread before application exit."""
         self._api_thread.quit()
         self._api_thread.wait(3000)
+
+
+def _read_image(path: str) -> tuple[bytes | None, str]:
+    from pathlib import Path
+
+    suffix = Path(path).suffix.lower()
+    mapping = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }
+    content_type = mapping.get(suffix)
+    if content_type is None:
+        return None, ""
+    try:
+        return Path(path).read_bytes(), content_type
+    except OSError:
+        logger.exception("Background image read failed")
+        return None, ""

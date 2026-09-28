@@ -57,12 +57,19 @@ class StatusService:
         snapshot = SnapshotStore.instance().read_latest(client_id)
         privacy = _privacy_status(payload.get("privacy") or {})
         show_screenshot = privacy.screenshot if privacy is not None else False
+        media = _media_status(payload.get("media"))
+        if media is not None and not media.cover_url:
+            from heartbeat.server.services import media_assets
+
+            candidate = media_assets.cover_url(client_id)
+            if (media_assets.covers_dir() / f"{client_id}.jpg").is_file():
+                media.cover_url = candidate
         return StatusPayload(
             online=online,
             last_heartbeat_ts=row.ts,
             client=_client_status(payload.get("client") or {}),
             system=_system_status(payload.get("system")),
-            media=_media_status(payload.get("media")),
+            media=media,
             processes=_process_status(payload.get("processes") or []),
             screenshot=_screenshot_status(snapshot if show_screenshot else None),
             privacy=privacy,

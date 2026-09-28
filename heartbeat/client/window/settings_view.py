@@ -24,6 +24,7 @@ class SettingsView(QWidget):
     """Settings form assembled in code and driven entirely by config fields."""
 
     save_requested = Signal(object, str, str, str)
+    background_requested = Signal()
     close_requested = Signal()
 
     def __init__(self, translator: Translator) -> None:
@@ -55,6 +56,7 @@ class SettingsView(QWidget):
         self._start_minimized = QCheckBox()
         self._save_button = QPushButton()
         self._cancel_button = QPushButton()
+        self._background_button = QPushButton()
         self._server_group = QGroupBox()
         self._push_group = QGroupBox()
         self._privacy_group = QGroupBox()
@@ -72,6 +74,7 @@ class SettingsView(QWidget):
         self.retranslate()
         self._save_button.clicked.connect(self._on_save)
         self._cancel_button.clicked.connect(self.close_requested.emit)
+        self._background_button.clicked.connect(self.background_requested.emit)
 
     def apply_config(
         self,
@@ -122,6 +125,7 @@ class SettingsView(QWidget):
         self._start_minimized.setText(self._t.tr("settings.start_minimized"))
         self._save_button.setText(self._t.tr("button.save"))
         self._cancel_button.setText(self._t.tr("button.close"))
+        self._background_button.setText(self._t.tr("settings.upload_background"))
 
     def is_visible(self) -> bool:
         """Return whether the settings window is currently shown."""
@@ -161,6 +165,7 @@ class SettingsView(QWidget):
         root.addWidget(self._build_screenshot_group())
         root.addWidget(self._build_general_group())
         buttons = QHBoxLayout()
+        buttons.addWidget(self._background_button)
         buttons.addStretch(1)
         buttons.addWidget(self._save_button)
         buttons.addWidget(self._cancel_button)

@@ -56,6 +56,7 @@ class MediaInfo:
     album: str | None = None
     app: str | None = None
     cover_url: str | None = None
+    cover_bytes: bytes | None = None
     position_ms: int | None = None
     duration_ms: int | None = None
 

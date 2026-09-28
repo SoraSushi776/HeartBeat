@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import LiveStatus from "./components/LiveStatus.vue"
 import MediaCard from "./components/MediaCard.vue"
 import ProcessCloud from "./components/ProcessCloud.vue"
@@ -9,13 +9,26 @@ import Heatmap from "./components/Heatmap.vue"
 import DiaryTimeline from "./components/DiaryTimeline.vue"
 import FriendLinks from "./components/FriendLinks.vue"
 import { useDashboard, useDashboardLifecycle } from "./stores/dashboard"
+import { resolveAssetUrl } from "./utils/url"
 
 const store = useDashboard()
 useDashboardLifecycle(store)
 
 const theme = ref<"system" | "light" | "dark">("system")
+const processCard = ref<HTMLElement | null>(null)
+const processHeight = ref<number | null>(null)
+let observer: ResizeObserver | null = null
 
 const days = computed(() => store.github.value?.contributions?.days ?? [])
+const backgroundStyle = computed(() => {
+  const url = resolveAssetUrl(store.backgroundUrl.value)
+  if (!url) {
+    return {}
+  }
+  return {
+    backgroundImage: `url(${url})`,
+  }
+})
 
 const themeLabel = computed(
   () =>
@@ -43,15 +56,40 @@ function applyTheme(): void {
   root.setAttribute("data-theme", theme.value)
 }
 
-onMounted(() => {
+function measureProcess(): void {
+  const node = processCard.value?.querySelector(".card") ?? processCard.value
+  if (node instanceof HTMLElement) {
+    processHeight.value = node.getBoundingClientRect().height
+  }
+}
+
+onMounted(async () => {
   const saved = window.localStorage.getItem("heartbeat-theme")
   if (saved === "light" || saved === "dark" || saved === "system") {
     theme.value = saved
   }
   applyTheme()
+  await nextTick()
+  measureProcess()
+  observer = new ResizeObserver(() => measureProcess())
+  if (processCard.value) {
+    observer.observe(processCard.value)
+  }
 })
 
-/** 切换主题并写入本地存储 */
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
+})
+
+watch(
+  () => store.status.value?.processes?.length ?? 0,
+  async () => {
+    await nextTick()
+    measureProcess()
+  },
+)
+
 function onThemeClick(): void {
   cycleTheme()
   window.localStorage.setItem("heartbeat-theme", theme.value)
@@ -59,6 +97,7 @@ function onThemeClick(): void {
 </script>
 
 <template>
+  <div class="page-bg" :style="backgroundStyle"></div>
   <div class="page">
     <header class="header">
       <div>
@@ -71,19 +110,40 @@ function onThemeClick(): void {
       </div>
     </header>
     <main class="dashboard">
-      <div class="tile tile-live"><LiveStatus /></div>
-      <div class="tile tile-media"><MediaCard /></div>
-      <div class="tile tile-snapshot"><SnapshotLightbox /></div>
-      <div class="tile tile-process"><ProcessCloud /></div>
-      <div class="tile tile-github"><GithubPanel /></div>
+      <div class="top-row">
+        <div class="tile tile-live"><LiveStatus /></div>
+        <div class="tile tile-media"><MediaCard /></div>
+        <div class="tile tile-snapshot"><SnapshotLightbox /></div>
+      </div>
+      <div class="mid-row">
+        <div ref="processCard" class="tile tile-process"><ProcessCloud /></div>
+        <div class="tile tile-github">
+          <GithubPanel :compact-height="processHeight" />
+        </div>
+      </div>
       <div class="tile tile-heatmap"><Heatmap :days="days" /></div>
-      <div class="tile tile-diary"><DiaryTimeline /></div>
-      <div class="tile tile-friends"><FriendLinks /></div>
+      <div class="lower-row">
+        <div class="tile tile-diary"><DiaryTimeline /></div>
+        <div class="tile tile-friends"><FriendLinks /></div>
+      </div>
     </main>
   </div>
 </template>
 
 <style scoped>
+.page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--md-sys-color-surface) 88%, transparent), var(--md-sys-color-surface)),
+    var(--md-sys-color-surface);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  opacity: 1;
+}
+
 .page {
   max-width: var(--page-max);
   margin: 0 auto;
@@ -123,82 +183,60 @@ function onThemeClick(): void {
 }
 
 .dashboard {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--page-gap);
-  align-items: start;
+}
+
+.top-row,
+.mid-row,
+.lower-row {
+  display: grid;
+  gap: var(--page-gap);
+  align-items: stretch;
+}
+
+.top-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mid-row {
+  grid-template-columns: 5fr 7fr;
+}
+
+.lower-row {
+  grid-template-columns: 7fr 5fr;
 }
 
 .tile {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.tile-live {
-  grid-column: span 4;
-}
-
-.tile-media {
-  grid-column: span 4;
-}
-
-.tile-snapshot {
-  grid-column: span 4;
-}
-
-.tile-process {
-  grid-column: span 5;
-}
-
-.tile-github {
-  grid-column: span 7;
+.tile > :deep(.card),
+.tile > :deep(section) {
+  height: 100%;
 }
 
 .tile-heatmap {
-  grid-column: span 12;
-}
-
-.tile-diary {
-  grid-column: span 7;
-}
-
-.tile-friends {
-  grid-column: span 5;
+  width: 100%;
 }
 
 @media (max-width: 1100px) {
-  .dashboard {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+  .top-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .tile-live,
-  .tile-media,
-  .tile-snapshot,
-  .tile-process {
-    grid-column: span 3;
-  }
-
-  .tile-github,
-  .tile-heatmap,
-  .tile-diary,
-  .tile-friends {
-    grid-column: span 6;
+  .mid-row,
+  .lower-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 720px) {
-  .dashboard {
+  .top-row {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tile-live,
-  .tile-media,
-  .tile-snapshot,
-  .tile-process,
-  .tile-github,
-  .tile-heatmap,
-  .tile-diary,
-  .tile-friends {
-    grid-column: auto;
   }
 
   .header {
