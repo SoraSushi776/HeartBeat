@@ -233,3 +233,15 @@ macOS 媒体走标准库 `subprocess` + `osascript`，无三方依赖。
 3. 截图必须本地模糊加 WebP，明文不出本机
 4. 进程过滤在采集层完成，未通过的不进 payload
 5. 所有输出可直接 `json.dumps`，封面给 bytes 或已换存 URL
+
+## macOS 媒体补充
+
+- 优先 `nowplaying-cli`（https://github.com/kirtan-shah/nowplaying-cli），可读系统 Now Playing（含 SPlayer 等）与封面 artworkData。
+- 该工具非系统自带、仅 macOS，官方安装方式为 `brew install nowplaying-cli` 或源码 `make install`，GPL-3.0，**不要打进客户端包**。
+- 客户端 setup 模块负责检测与引导安装；缺失时回落 AppleScript Music/Spotify。
+- 依赖 MediaRemote 私有 API，系统升级可能失效。
+
+## 进程可见应用
+
+- `process_collect_all` 为真时按路径与排除表筛选用户可见应用（`/Applications`、`*.app/Contents/MacOS` 等）。
+- 空白名单且 collect_all 为假时不采集（隐私默认拒绝）。
