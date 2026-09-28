@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 from collections.abc import Callable
+from pathlib import Path
 
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QPainter, QPixmap
@@ -15,8 +16,35 @@ logger = logging.getLogger(__name__)
 _IS_MACOS = sys.platform == "darwin"
 
 
+def _icon_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        exe = Path(sys.executable).resolve()
+        bundle_resources = exe.parent.parent / "Resources" / "resources" / "icons"
+        if bundle_resources.is_dir():
+            return bundle_resources
+        return exe.parent / "resources" / "icons"
+    return Path(__file__).resolve().parents[2] / "resources" / "icons"
+
+
+def _load_icon_file() -> QIcon | None:
+    directory = _icon_dir()
+    candidates = (
+        directory / "icon_tray_mask_256.png",
+        directory / "icon_256.png",
+        directory / "icon.png",
+    )
+    for path in candidates:
+        if path.is_file():
+            return QIcon(str(path))
+    return None
+
+
 def create_tray_icon() -> QIcon:
-    """Build a mask-friendly tray icon."""
+    """Build a mask-friendly tray icon from bundled assets when present."""
+    loaded = _load_icon_file()
+    if loaded is not None:
+        loaded.setIsMask(True)
+        return loaded
     pixmap = QPixmap(64, 64)
     pixmap.fill(QColor(0, 0, 0, 0))
     painter = QPainter(pixmap)

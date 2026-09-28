@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+echo "Windows client packaging must run on Windows."
+echo ""
+echo "Recommended steps on a Windows machine:"
+echo "  1. Install Python 3.10+ and git"
+echo "  2. python -m venv .venv"
+echo "  3. .venv\\Scripts\\activate"
+echo "  4. pip install -e \".[client]\""
+echo "  5. pip install pyside6-deploy nuitka ordered-set zstandard"
+echo "  6. python scripts\\generate_icons.py"
+echo "  7. pyside6-deploy heartbeat\\client\\main.py"
+echo ""
+echo "Or from this repo after installing dependencies:"
+echo "  .venv\\Scripts\\python.exe scripts\\build_client.py"
+echo ""
+echo "Notes:"
+echo "  - Use directory output + Inno Setup for a Start Menu installer."
+echo "  - code-sign the exe if SmartScreen warnings matter."
+echo "  - Optional: brew-equivalent 'nowplaying-cli' is macOS only; Windows media uses winrt-Windows.Media.Control."
