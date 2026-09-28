@@ -102,6 +102,12 @@ function tooltip(day: ContributionDay | null): string {
   padding-bottom: 4px;
 }
 
+.heatmap {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .heatmap rect {
   fill: var(--heat-0);
 }

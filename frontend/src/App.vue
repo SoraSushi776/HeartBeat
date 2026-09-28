@@ -70,15 +70,15 @@ function onThemeClick(): void {
         <button type="button" class="btn btn-ghost" @click="onThemeClick">{{ themeLabel }}</button>
       </div>
     </header>
-    <main class="column">
-      <LiveStatus />
-      <MediaCard />
-      <SnapshotLightbox />
-      <ProcessCloud />
-      <GithubPanel />
-      <Heatmap :days="days" />
-      <DiaryTimeline />
-      <FriendLinks />
+    <main class="dashboard">
+      <div class="tile tile-live"><LiveStatus /></div>
+      <div class="tile tile-media"><MediaCard /></div>
+      <div class="tile tile-snapshot"><SnapshotLightbox /></div>
+      <div class="tile tile-process"><ProcessCloud /></div>
+      <div class="tile tile-github"><GithubPanel /></div>
+      <div class="tile tile-heatmap"><Heatmap :days="days" /></div>
+      <div class="tile tile-diary"><DiaryTimeline /></div>
+      <div class="tile tile-friends"><FriendLinks /></div>
     </main>
   </div>
 </template>
@@ -87,7 +87,7 @@ function onThemeClick(): void {
 .page {
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: 28px 16px 48px;
+  padding: var(--page-pad-y) var(--page-pad-x) var(--page-pad-bottom);
 }
 
 .header {
@@ -122,16 +122,98 @@ function onThemeClick(): void {
   margin: 4px 0 0;
 }
 
-.column {
-  display: flex;
-  flex-direction: column;
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--page-gap);
+  align-items: start;
 }
 
-@media (max-width: 560px) {
+.tile {
+  min-width: 0;
+}
+
+.tile-live {
+  grid-column: span 4;
+}
+
+.tile-media {
+  grid-column: span 4;
+}
+
+.tile-snapshot {
+  grid-column: span 4;
+}
+
+.tile-process {
+  grid-column: span 5;
+}
+
+.tile-github {
+  grid-column: span 7;
+}
+
+.tile-heatmap {
+  grid-column: span 12;
+}
+
+.tile-diary {
+  grid-column: span 7;
+}
+
+.tile-friends {
+  grid-column: span 5;
+}
+
+@media (max-width: 1100px) {
+  .dashboard {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .tile-live,
+  .tile-media,
+  .tile-snapshot,
+  .tile-process {
+    grid-column: span 3;
+  }
+
+  .tile-github,
+  .tile-heatmap,
+  .tile-diary,
+  .tile-friends {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tile-live,
+  .tile-media,
+  .tile-snapshot,
+  .tile-process,
+  .tile-github,
+  .tile-heatmap,
+  .tile-diary,
+  .tile-friends {
+    grid-column: auto;
+  }
+
   .header {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .page {
+    padding-top: 12px;
+  }
+
+  .header {
+    margin-bottom: 12px;
   }
 }
 </style>

@@ -116,6 +116,10 @@ Flex Chip，不是 Wordle 词云。
 - `max-width: 90vw; max-height: 85vh; object-fit: contain`
 - 动画只用 `opacity` 与 `scale`，不要对图片套 blur 动画
 
+## 布局
+
+桌面用 CSS Grid 12 栏多列排布，卡片按内容分配跨栏（状态/音乐/快照各 4 栏，GitHub 与日记 7 栏，热力图通栏）。中等窗口切 6 栏，窄屏自动改单列。`--page-max` 控制最大宽度，横屏矮视口压缩上下留白。窗口缩放与横竖屏切换均由媒体查询响应，无需 JS 量尺寸。
+
 ## 主题
 
 Material You 变量：
