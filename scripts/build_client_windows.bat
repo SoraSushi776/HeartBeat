@@ -3,6 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0.."
 
 echo === HeartBeat Windows client build ===
+echo Uses .venv-win so it will not clash with macOS .venv in the same folder.
 echo.
 
 echo Working directory: %CD%
@@ -26,17 +27,17 @@ if %errorlevel%==0 (
 )
 echo.
 
-if not exist ".venv\Scripts\python.exe" (
+if not exist ".venv-win\Scripts\python.exe" (
   echo === Creating virtualenv ===
-  python -m venv .venv
+  python -m venv .venv-win
   if errorlevel 1 (
     echo [FAIL] python -m venv failed.
     exit /b 1
   )
 )
 
-set PY=.venv\Scripts\python.exe
-set PIP=.venv\Scripts\pip.exe
+set PY=.venv-win\Scripts\python.exe
+set PIP=.venv-win\Scripts\pip.exe
 
 echo === Step 1: core runtime deps ===
 "%PIP%" install --upgrade pip setuptools wheel
@@ -46,7 +47,7 @@ echo === Step 2: install heartbeat + PySide6 ===
 "%PIP%" install -e ".[client]"
 if errorlevel 1 (
   echo [FAIL] project deps failed. If PySide6 has no wheel for this Python/arch,
-  echo        install 64-bit x64 Python 3.10-3.12 and recreate .venv.
+  echo        install 64-bit x64 Python 3.10-3.12 and recreate .venv-win.
   exit /b 1
 )
 
@@ -90,11 +91,11 @@ if defined USE_PYINSTALLER (
     --add-data "resources\icons;resources\icons" ^
     heartbeat\client\main.py
 ) else (
-  set DEPLOY=.venv\Scripts\pyside6-deploy.exe
+  set DEPLOY=.venv-win\Scripts\pyside6-deploy.exe
   if not exist "%DEPLOY%" (
-    "%PY%" -m pyside6_deploy --force --name HeartBeat --mode standalone --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,assets heartbeat\client\main.py
+    "%PY%" -m pyside6_deploy --force --name HeartBeat --mode standalone --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,.venv-win,assets heartbeat\client\main.py
   ) else (
-    "%DEPLOY%" --force --name HeartBeat --mode standalone --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,assets heartbeat\client\main.py
+    "%DEPLOY%" --force --name HeartBeat --mode standalone --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,.venv-win,assets heartbeat\client\main.py
   )
 )
 
