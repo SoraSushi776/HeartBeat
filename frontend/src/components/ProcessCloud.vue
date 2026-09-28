@@ -6,6 +6,10 @@ const store = useDashboard()
 
 const MAX_WEIGHT = 8
 
+const title = computed(
+  () => store.site.value?.process_title || "TA的电脑上正在玩",
+)
+
 const chips = computed(() => {
   const processes = store.status.value?.processes ?? []
   const maxCount = processes.reduce((max, item) => Math.max(max, item.count ?? 1), 1)
@@ -26,7 +30,7 @@ const chips = computed(() => {
 
 <template>
   <section class="card">
-    <h2 class="card-title">软件标签云</h2>
+    <h2 class="card-title">{{ title }}</h2>
     <div v-if="chips.length" class="cloud">
       <span
         v-for="chip in chips"

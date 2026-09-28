@@ -9,6 +9,7 @@ const media = computed(() => store.status.value?.media ?? null)
 
 const displayPosition = ref(0)
 const trackKey = ref("")
+const coverVersion = ref(0)
 let frame = 0
 let lastTickTs = 0
 
@@ -19,7 +20,15 @@ const STATE_TEXT: Record<string, string> = {
 }
 
 const stateText = computed(() => STATE_TEXT[media.value?.state ?? "idle"] ?? "暂无播放")
-const coverSrc = computed(() => resolveAssetUrl(media.value?.cover_url))
+
+const coverSrc = computed(() => {
+  const base = resolveAssetUrl(media.value?.cover_url)
+  if (!base) {
+    return ""
+  }
+  const joiner = base.includes("?") ? "&" : "?"
+  return `${base}${joiner}v=${coverVersion.value}`
+})
 
 const progressRatio = computed(() => {
   const duration = media.value?.duration_ms ?? 0
@@ -38,6 +47,9 @@ function syncPosition(force = false): void {
   const incoming = media.value?.position_ms ?? 0
   const changed = nextKey !== trackKey.value
   if (changed || force) {
+    if (changed && trackKey.value) {
+      coverVersion.value += 1
+    }
     trackKey.value = nextKey
     displayPosition.value = incoming
     return
@@ -88,15 +100,15 @@ onUnmounted(() => cancelAnimationFrame(frame))
         <div class="title">{{ media.title || "未知曲目" }}</div>
         <div class="muted">{{ media.artist || "未知歌手" }}</div>
         <div class="muted sub">{{ media.album || media.app || "" }}</div>
-        <div class="progress">
-          <div class="progress-track">
-            <div class="progress-fill" :style="{ width: `${progressRatio * 100}%` }"></div>
-          </div>
-          <div class="times muted">
-            <span>{{ formatDuration(displayPosition) }}</span>
-            <span>{{ formatDuration(media.duration_ms) }}</span>
-          </div>
-        </div>
+      </div>
+    </div>
+    <div v-if="media && media.state !== 'idle'" class="progress">
+      <div class="progress-track">
+        <div class="progress-fill" :style="{ width: `${progressRatio * 100}%` }"></div>
+      </div>
+      <div class="times muted">
+        <span>{{ formatDuration(displayPosition) }}</span>
+        <span>{{ formatDuration(media.duration_ms) }}</span>
       </div>
     </div>
     <p v-else class="muted empty">当前没有在播音乐</p>
@@ -113,7 +125,7 @@ onUnmounted(() => cancelAnimationFrame(frame))
 .media-body {
   display: flex;
   gap: 16px;
-  align-items: stretch;
+  align-items: center;
   flex: 1;
 }
 
@@ -154,10 +166,11 @@ onUnmounted(() => cancelAnimationFrame(frame))
 }
 
 .progress {
-  margin-top: auto;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
 }
 
 .progress-track {

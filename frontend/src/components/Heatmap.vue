@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref } from "vue"
 import type { ContributionDay } from "../types/protocol"
 
 const props = defineProps<{
@@ -9,6 +9,11 @@ const props = defineProps<{
 const CELL = 11
 const GAP = 3
 const WEEKS = 53
+
+const tipText = ref("")
+const tipVisible = ref(false)
+const tipX = ref(0)
+const tipY = ref(0)
 
 const grid = computed(() => {
   const columns: Array<Array<ContributionDay | null>> = []
@@ -52,12 +57,26 @@ function levelClass(day: ContributionDay | null): string {
   return `is-level-${Math.min(4, Math.max(0, day.level ?? 0))}`
 }
 
-/** 生成单日提示文案 */
 function tooltip(day: ContributionDay | null): string {
   if (!day) {
     return ""
   }
-  return `${day.date}: ${day.count} 次`
+  return `${day.date}：${day.count} 次贡献`
+}
+
+function onMove(event: MouseEvent, day: ContributionDay | null): void {
+  if (!day) {
+    tipVisible.value = false
+    return
+  }
+  tipText.value = tooltip(day)
+  tipX.value = event.clientX
+  tipY.value = event.clientY
+  tipVisible.value = true
+}
+
+function onLeave(): void {
+  tipVisible.value = false
 }
 </script>
 
@@ -67,7 +86,7 @@ function tooltip(day: ContributionDay | null): string {
       贡献热力图
       <span class="chip">近一年 {{ total }} 次</span>
     </h2>
-    <div v-if="grid.length" class="heatmap-wrap">
+    <div v-if="grid.length" class="heatmap-wrap" @mouseleave="onLeave">
       <svg
         class="heatmap"
         :width="width"
@@ -86,11 +105,19 @@ function tooltip(day: ContributionDay | null): string {
             :height="CELL"
             rx="2"
             :class="levelClass(day)"
+            @mousemove="onMove($event, day)"
           >
             <title>{{ tooltip(day) }}</title>
           </rect>
         </template>
       </svg>
+      <div
+        v-if="tipVisible"
+        class="heat-tip"
+        :style="{ left: `${tipX}px`, top: `${tipY}px` }"
+      >
+        {{ tipText }}
+      </div>
     </div>
     <p v-else class="muted empty">暂无贡献数据</p>
   </section>
@@ -100,6 +127,7 @@ function tooltip(day: ContributionDay | null): string {
 .heatmap-wrap {
   overflow-x: auto;
   padding-bottom: 4px;
+  position: relative;
 }
 
 .heatmap {
@@ -108,35 +136,46 @@ function tooltip(day: ContributionDay | null): string {
   height: auto;
 }
 
-.heatmap rect {
-  fill: var(--heat-0);
-}
-
-.is-empty {
+.heatmap rect.is-empty {
   fill: transparent;
 }
 
-.is-level-0 {
+.heatmap rect.is-level-0 {
   fill: var(--heat-0);
 }
 
-.is-level-1 {
+.heatmap rect.is-level-1 {
   fill: var(--heat-1);
 }
 
-.is-level-2 {
+.heatmap rect.is-level-2 {
   fill: var(--heat-2);
 }
 
-.is-level-3 {
+.heatmap rect.is-level-3 {
   fill: var(--heat-3);
 }
 
-.is-level-4 {
+.heatmap rect.is-level-4 {
   fill: var(--heat-4);
 }
 
 .empty {
   margin: 0;
+}
+
+.heat-tip {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translate(-50%, -120%);
+  white-space: nowrap;
 }
 </style>

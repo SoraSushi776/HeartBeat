@@ -114,6 +114,12 @@ export interface SnapshotEvent {
   url: string
 }
 
+export interface SiteInfo {
+  title?: string | null
+  tagline?: string | null
+  process_title?: string | null
+}
+
 export interface ApiError {
   code: string
   message: string

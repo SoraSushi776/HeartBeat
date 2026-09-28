@@ -6,6 +6,7 @@ import {
   fetchFriends,
   fetchGithub,
   fetchMessages,
+  fetchSite,
   fetchStatus,
 } from "../api/http"
 import { StatusStream, type StreamMode } from "../api/stream"
@@ -21,6 +22,7 @@ import type {
   FriendLink,
   GithubData,
   Message,
+  SiteInfo,
   SnapshotEvent,
   StatusData,
 } from "../types/protocol"
@@ -39,6 +41,11 @@ export class DashboardStore {
   readonly lightboxOpen = ref(false)
   readonly demoMode = ref(false)
   readonly backgroundUrl = ref("")
+  readonly site = shallowRef<SiteInfo>({
+    title: "HeartBeat",
+    tagline: "个人主页与实时状态",
+    process_title: "TA的电脑上正在玩",
+  })
 
   private stream: StatusStream | null = null
   private clock: number | null = null
@@ -59,7 +66,22 @@ export class DashboardStore {
       this.loadMessages(),
       this.loadGithub(),
       this.loadBackground(),
+      this.loadSite(),
     ])
+  }
+
+  /** 拉取站点标题文案 */
+  async loadSite(): Promise<void> {
+    try {
+      const data = await fetchSite()
+      this.site.value = {
+        title: data.title || "HeartBeat",
+        tagline: data.tagline || "个人主页与实时状态",
+        process_title: data.process_title || "TA的电脑上正在玩",
+      }
+    } catch {
+      return
+    }
   }
 
   /** 拉取站点背景图 */

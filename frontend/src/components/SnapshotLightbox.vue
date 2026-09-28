@@ -8,6 +8,7 @@ const store = useDashboard()
 const shot = computed(() => store.status.value?.screenshot ?? null)
 const thumbUrl = computed(() => resolveAssetUrl(shot.value?.url))
 const closeButton = ref<HTMLButtonElement | null>(null)
+const revealed = ref(false)
 const thumbFailed = ref(false)
 let restoreFocus: HTMLElement | null = null
 
@@ -27,18 +28,17 @@ function onThumbLoad(): void {
   thumbFailed.value = false
 }
 
-/** 打开灯箱并把焦点移到关闭按钮 */
 async function open(): Promise<void> {
   if (!canOpen.value) {
     return
   }
+  revealed.value = true
   restoreFocus = document.activeElement as HTMLElement | null
   store.openLightbox()
   await nextTick()
   closeButton.value?.focus()
 }
 
-/** 关闭灯箱并归还焦点 */
 function close(): void {
   store.closeLightbox()
   restoreFocus?.focus()
@@ -47,6 +47,7 @@ function close(): void {
 
 watch(thumbUrl, () => {
   thumbFailed.value = false
+  revealed.value = false
 })
 
 watch(
@@ -73,6 +74,7 @@ onUnmounted(() => {
       v-if="canOpen"
       type="button"
       class="thumb-btn"
+      :class="{ 'is-veiled': !revealed }"
       aria-label="查看桌面快照"
       @click="open"
     >
@@ -84,10 +86,14 @@ onUnmounted(() => {
         @error="onThumbError"
         @load="onThumbLoad"
       />
-      <span class="thumb-hint">点击放大</span>
+      <span class="veil">
+        <span class="eye-off" aria-hidden="true"></span>
+        <span class="veil-text">点击显示快照</span>
+      </span>
+      <span v-if="revealed" class="thumb-hint">点击放大</span>
     </button>
     <div v-else class="placeholder" :class="{ 'is-error': thumbFailed }">
-      <span class="ph-icon" aria-hidden="true"></span>
+      <span class="eye-off" aria-hidden="true"></span>
       <p class="muted">{{ thumbFailed ? "快照加载失败" : "暂无快照" }}</p>
     </div>
   </section>
@@ -130,11 +136,68 @@ onUnmounted(() => {
   width: 100%;
   height: 220px;
   object-fit: cover;
-  transition: transform 0.2s ease;
+  transition: filter 0.2s ease, transform 0.2s ease;
 }
 
-.thumb-btn:hover .thumb {
-  transform: scale(1.01);
+.is-veiled .thumb {
+  filter: blur(18px) saturate(0.6);
+  transform: scale(1.04);
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--md-sys-color-on-surface);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 82%, transparent);
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.is-veiled .veil {
+  opacity: 1;
+}
+
+.thumb-btn:not(.is-veiled) .veil {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.veil-text {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.eye-off {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--md-sys-color-surface-container);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+.eye-off::before {
+  content: "";
+  position: absolute;
+  inset: 14px 10px;
+  border: 2px solid var(--md-sys-color-outline);
+  border-radius: 50% / 60%;
+}
+
+.eye-off::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 2px;
+  background: var(--md-sys-color-outline);
+  transform: rotate(-35deg);
 }
 
 .thumb-hint {
@@ -146,12 +209,6 @@ onUnmounted(() => {
   font-size: 0.75rem;
   color: var(--md-sys-color-on-surface);
   background: color-mix(in srgb, var(--md-sys-color-surface) 82%, transparent);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.thumb-btn:hover .thumb-hint {
-  opacity: 1;
 }
 
 .placeholder {
@@ -168,19 +225,6 @@ onUnmounted(() => {
 
 .placeholder.is-error {
   border-color: var(--md-sys-color-error);
-}
-
-.ph-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background:
-    linear-gradient(currentColor, currentColor) center / 22px 2px no-repeat,
-    linear-gradient(currentColor, currentColor) center / 2px 22px no-repeat;
-  color: var(--md-sys-color-outline);
-  opacity: 0.75;
-  transform: rotate(-45deg);
-  mask: radial-gradient(circle at center, transparent 10px, #000 10.5px);
 }
 
 .placeholder p {

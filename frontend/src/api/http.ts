@@ -61,3 +61,8 @@ export function createMessage(payload: { author?: string; content: string }): Pr
 export function fetchBackground(): Promise<{ url?: string | null }> {
   return requestJson<{ url?: string | null }>("/api/v1/background")
 }
+
+/** 拉取站点标题与文案 */
+export function fetchSite(): Promise<import("../types/protocol").SiteInfo> {
+  return requestJson<import("../types/protocol").SiteInfo>("/api/v1/site")
+}

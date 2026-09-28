@@ -244,15 +244,21 @@ class WindowManager(QObject):
         )
         if not path:
             return
-        data, content_type = _read_image(path)
-        if data is None:
+        raw, _content_type = _read_image(path)
+        if raw is None:
             QMessageBox.warning(self._window, self._translator.tr("app.title"), "Unreadable image")
+            return
+        from heartbeat.media_art import to_background_jpeg
+
+        jpeg = to_background_jpeg(raw)
+        if jpeg is None:
+            QMessageBox.warning(self._window, self._translator.tr("app.title"), "Image compress failed")
             return
         try:
             service = ApiService.from_settings(self._api_settings(self._secret_store.load_api_key()))
-            service.upload_background(data, content_type)
+            service.upload_background(jpeg, "image/jpeg")
             QMessageBox.information(self._window, self._translator.tr("app.title"), "Background updated")
-            logger.info("Background uploaded: %s", path)
+            logger.info("Background uploaded: %s bytes=%d", path, len(jpeg))
         except Exception:
             logger.exception("Background upload failed")
             QMessageBox.warning(self._window, self._translator.tr("app.title"), "Background upload failed")
