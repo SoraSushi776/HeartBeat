@@ -1,6 +1,12 @@
 import { computed, inject, onMounted, onUnmounted, ref, shallowRef, type InjectionKey } from "vue"
 import { fetchDiaries, fetchFriends, fetchGithub, fetchStatus } from "../api/http"
 import { StatusStream, type StreamMode } from "../api/stream"
+import {
+  demoDiaries,
+  demoFriends,
+  demoGithub,
+  demoStatus,
+} from "./demo"
 import type {
   Diary,
   FriendLink,
@@ -20,6 +26,7 @@ export class DashboardStore {
   readonly nowMs = ref(Date.now())
   readonly streamMode = ref<StreamMode>("idle")
   readonly lightboxOpen = ref(false)
+  readonly demoMode = ref(false)
 
   private stream: StatusStream | null = null
   private clock: number | null = null
@@ -40,8 +47,10 @@ export class DashboardStore {
   async loadStatus(): Promise<void> {
     try {
       this.status.value = await fetchStatus()
+      this.demoMode.value = false
     } catch {
-      return
+      this.status.value = demoStatus()
+      this.demoMode.value = true
     }
   }
 
@@ -51,7 +60,7 @@ export class DashboardStore {
       const list = await fetchDiaries()
       this.diaries.value = list.items
     } catch {
-      return
+      this.diaries.value = demoDiaries()
     }
   }
 
@@ -60,16 +69,17 @@ export class DashboardStore {
     try {
       this.friends.value = await fetchFriends()
     } catch {
-      return
+      this.friends.value = demoFriends()
     }
   }
 
   /** 拉取 GitHub 缓存资料 */
   async loadGithub(): Promise<void> {
     try {
-      this.github.value = await fetchGithub()
+      const data = await fetchGithub()
+      this.github.value = data && Object.keys(data).length > 0 ? data : demoGithub()
     } catch {
-      return
+      this.github.value = demoGithub()
     }
   }
 

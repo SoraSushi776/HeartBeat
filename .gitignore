@@ -223,3 +223,6 @@ data/
 # Frontend
 frontend/dist/
 frontend/node_modules/
+
+/assets/
+/index.html

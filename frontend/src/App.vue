@@ -65,7 +65,10 @@ function onThemeClick(): void {
         <h1 class="brand">HeartBeat</h1>
         <p class="muted tagline">个人主页与实时状态</p>
       </div>
-      <button type="button" class="btn btn-ghost" @click="onThemeClick">{{ themeLabel }}</button>
+      <div class="header-actions">
+        <span v-if="store.demoMode.value" class="demo-badge">演示数据</span>
+        <button type="button" class="btn btn-ghost" @click="onThemeClick">{{ themeLabel }}</button>
+      </div>
     </header>
     <main class="column">
       <LiveStatus />
@@ -93,6 +96,20 @@ function onThemeClick(): void {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.demo-badge {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
 }
 
 .brand {

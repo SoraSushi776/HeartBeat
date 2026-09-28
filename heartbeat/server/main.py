@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -54,7 +55,17 @@ def create_app() -> FastAPI:
     app.include_router(friends.router)
     app.include_router(github.router)
     app.mount("/static", StaticFiles(directory=str(settings.data_dir)), name="static")
+    _register_frontend(app)
     return app
+
+
+def _register_frontend(app: FastAPI) -> None:
+    """Serve the built Dashboard when frontend/dist is available."""
+    dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    if not dist.is_dir():
+        logger.warning("Frontend dist missing: %s", dist)
+        return
+    app.frontend("/", directory=str(dist))
 
 
 def _register_cors(app: FastAPI, origins: list[str]) -> None:
