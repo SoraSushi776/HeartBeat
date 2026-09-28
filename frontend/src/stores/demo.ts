@@ -4,6 +4,7 @@ import type {
   GithubData,
   Message,
   ProcessInfo,
+  SiteInfo,
   StatusData,
 } from "../types/protocol"
 
@@ -168,5 +169,13 @@ export function demoGithub(): GithubData {
       days: contributionDays(),
     },
     fetched_ts: Date.now(),
+  }
+}
+
+export function demoSite(): SiteInfo {
+  return {
+    title: "HeartBeat",
+    tagline: "个人主页与实时状态",
+    process_title: "TA的电脑上正在玩",
   }
 }

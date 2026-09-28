@@ -115,9 +115,9 @@ export interface SnapshotEvent {
 }
 
 export interface SiteInfo {
-  title?: string | null
-  tagline?: string | null
-  process_title?: string | null
+  title: string
+  tagline: string
+  process_title: string
 }
 
 export interface ApiError {

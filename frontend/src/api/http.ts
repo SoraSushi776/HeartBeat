@@ -5,6 +5,7 @@ import type {
   GithubData,
   Message,
   MessageList,
+  SiteInfo,
   StatusData,
 } from "../types/protocol"
 
@@ -62,7 +63,7 @@ export function fetchBackground(): Promise<{ url?: string | null }> {
   return requestJson<{ url?: string | null }>("/api/v1/background")
 }
 
-/** 拉取站点标题与文案 */
-export function fetchSite(): Promise<import("../types/protocol").SiteInfo> {
-  return requestJson<import("../types/protocol").SiteInfo>("/api/v1/site")
+/** 拉取站点标题与描述文案 */
+export function fetchSite(): Promise<SiteInfo> {
+  return requestJson<SiteInfo>("/api/v1/site")
 }

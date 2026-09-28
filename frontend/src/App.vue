@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
+import SiteFooter from "./components/SiteFooter.vue"
 import { NAV_ITEMS } from "./router"
 import { useDashboard, useDashboardLifecycle } from "./stores/dashboard"
 import { resolveAssetUrl } from "./utils/url"
@@ -11,6 +12,9 @@ useDashboardLifecycle(store)
 const route = useRoute()
 const navRouter = useRouter()
 const theme = ref<"system" | "light" | "dark">("system")
+
+const siteTitle = computed(() => store.site.value.title || "HeartBeat")
+const siteTagline = computed(() => store.site.value.tagline || "")
 
 const backgroundStyle = computed(() => {
   const url = resolveAssetUrl(store.backgroundUrl.value)
@@ -69,8 +73,8 @@ onMounted(() => {
   <div class="page">
     <header class="header">
       <div>
-        <h1 class="brand">HeartBeat</h1>
-        <p class="muted tagline">个人主页与实时状态</p>
+        <h1 class="brand">{{ siteTitle }}</h1>
+        <p class="muted tagline">{{ siteTagline }}</p>
       </div>
       <div class="header-actions">
         <span v-if="store.demoMode.value" class="demo-badge">演示数据</span>
@@ -92,6 +96,7 @@ onMounted(() => {
     <main class="content">
       <RouterView />
     </main>
+    <SiteFooter />
   </div>
 </template>
 
