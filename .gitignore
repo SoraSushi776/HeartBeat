@@ -226,3 +226,6 @@ frontend/node_modules/
 
 /assets/
 /index.html
+
+/heartbeat/client/HeartBeat.app/
+/heartbeat/client/deployment/
