@@ -27,6 +27,7 @@ from heartbeat.server.routers import (
     heartbeat,
     messages,
     screenshot,
+    site,
     status,
 )
 from heartbeat.server.services.scheduler import create_scheduler
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(friends.router)
     app.include_router(messages.router)
     app.include_router(github.router)
+    app.include_router(site.router)
     app.mount("/static", StaticFiles(directory=str(settings.data_dir)), name="static")
     _register_frontend(app)
     return app

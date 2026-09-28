@@ -18,6 +18,9 @@ GITHUB_TOKEN_ENV = "HEARTBEAT_GITHUB_TOKEN"
 GITHUB_LOGIN_ENV = "HEARTBEAT_GITHUB_LOGIN"
 SECRETS_FILE_NAME = "secrets.json"
 DEFAULT_DATA_DIR = Path("data")
+DEFAULT_SITE_TITLE = "HeartBeat"
+DEFAULT_SITE_TAGLINE = "个人主页与实时状态"
+DEFAULT_SITE_PROCESS_TITLE = "TA的电脑上正在玩"
 
 _settings_cache: Settings | None = None
 
@@ -94,6 +97,39 @@ def save_github_token(token: str, login: str | None = None) -> None:
     _write_secrets_payload(settings.secrets_path(), payload)
     settings.github_token = token
     logger.info("GitHub token stored in secrets file")
+
+
+def load_site_settings() -> dict[str, str]:
+    """Return the stored site copy or protocol defaults when unset."""
+    stored = _read_secrets_payload(get_settings().secrets_path()).get("site")
+    data = stored if isinstance(stored, dict) else {}
+    return {
+        "title": _site_value(data, "title", DEFAULT_SITE_TITLE),
+        "tagline": _site_value(data, "tagline", DEFAULT_SITE_TAGLINE),
+        "process_title": _site_value(data, "process_title", DEFAULT_SITE_PROCESS_TITLE),
+    }
+
+
+def save_site_settings(values: dict[str, str]) -> dict[str, str]:
+    """Merge the given site copy fields into the secrets file and return the result."""
+    settings = get_settings()
+    payload = _read_secrets_payload(settings.secrets_path())
+    stored = payload.get("site")
+    data = dict(stored) if isinstance(stored, dict) else {}
+    for key, value in values.items():
+        data[key] = value
+    payload["site"] = data
+    _write_secrets_payload(settings.secrets_path(), payload)
+    logger.info("Site settings stored in secrets file")
+    return load_site_settings()
+
+
+def _site_value(data: dict[str, Any], key: str, default: str) -> str:
+    """Return a string field from the site object, or the default when absent."""
+    value = data.get(key)
+    if isinstance(value, str):
+        return value.strip()
+    return default
 
 
 def _resolve_secret(env_name: str, secrets_key: str, stored: dict[str, Any]) -> str:

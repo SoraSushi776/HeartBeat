@@ -265,4 +265,37 @@ class GithubTokenOut(SQLModel):
     updated_ts: int = 0
 
 
+class SiteOut(SQLModel):
+    """Site copy payload."""
+
+    title: str = "HeartBeat"
+    tagline: str = ""
+    process_title: str = ""
+
+
+class SiteUpdate(SQLModel):
+    """Site copy partial update body."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=80)
+    tagline: str | None = Field(default=None, max_length=200)
+    process_title: str | None = Field(default=None, min_length=1, max_length=80)
+
+    @field_validator("title", "process_title")
+    @classmethod
+    def copy_must_not_be_blank(cls, value: str | None) -> str | None:
+        """Reject blank site copy fields and trim their edges."""
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            raise ValueError("must not be empty")
+        return text
+
+    @field_validator("tagline")
+    @classmethod
+    def tagline_trimmed(cls, value: str | None) -> str | None:
+        """Trim tagline edges, allowing an empty result."""
+        return None if value is None else value.strip()
+
+
 
