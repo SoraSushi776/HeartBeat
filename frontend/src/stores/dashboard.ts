@@ -135,8 +135,8 @@ export class DashboardStore {
   }
 
   /** 发布留言并在成功后刷新列表 */
-  async sendMessage(author: string, content: string): Promise<void> {
-    await createMessage({ author: author || undefined, content })
+  async sendMessage(author: string, content: string, exposeIp = false): Promise<void> {
+    await createMessage({ author: author || undefined, content, expose_ip: exposeIp })
     await this.loadMessages()
   }
 

@@ -50,7 +50,11 @@ export function fetchMessages(limit = 50, offset = 0): Promise<MessageList> {
 }
 
 /** 发布一条留言 */
-export function createMessage(payload: { author?: string; content: string }): Promise<Message> {
+export function createMessage(payload: {
+  author?: string
+  content: string
+  expose_ip?: boolean
+}): Promise<Message> {
   return requestJson<Message>("/api/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -7,6 +7,8 @@ const store = useDashboard()
 
 const author = ref("")
 const content = ref("")
+const exposeIp = ref(false)
+const showLocation = ref(false)
 const sending = ref(false)
 const error = ref("")
 
@@ -16,6 +18,10 @@ const offlineHint = computed(() => (store.isOnline.value ? "" : "客户端离线
 
 const messages = computed(() => store.messages.value.slice())
 
+function locationOf(location: string | null | undefined): string {
+  return location && location.trim() ? location : "未知"
+}
+
 async function onSubmit(): Promise<void> {
   if (!canSend.value) {
     return
@@ -23,7 +29,7 @@ async function onSubmit(): Promise<void> {
   sending.value = true
   error.value = ""
   try {
-    await store.sendMessage(author.value.trim(), content.value.trim())
+    await store.sendMessage(author.value.trim(), content.value.trim(), exposeIp.value)
     content.value = ""
   } catch (err) {
     error.value = err instanceof Error ? err.message : "发送失败"
@@ -57,12 +63,25 @@ async function onSubmit(): Promise<void> {
         <span class="muted hint">{{ offlineHint || error }}</span>
         <button type="submit" class="btn" :disabled="!canSend">发送</button>
       </div>
+      <label class="check">
+        <input v-model="exposeIp" type="checkbox" :disabled="!store.isOnline.value" />
+        <span>公开我的 IP 属地</span>
+      </label>
     </form>
+    <label class="check list-toggle">
+      <input v-model="showLocation" type="checkbox" />
+      <span>显示 IP 属地</span>
+    </label>
     <ul v-if="messages.length" class="message-list">
       <li v-for="message in messages" :key="message.id" class="message">
         <div class="message-head">
           <span class="author">{{ message.author || "匿名" }}</span>
-          <span class="muted time">{{ formatRelative(message.created_ts, store.nowMs.value) }}</span>
+          <span class="meta">
+            <span v-if="showLocation && message.expose_ip" class="muted location">
+              {{ locationOf(message.location) }}
+            </span>
+            <span class="muted time">{{ formatRelative(message.created_ts, store.nowMs.value) }}</span>
+          </span>
         </div>
         <p class="body">{{ message.content }}</p>
       </li>
@@ -111,6 +130,19 @@ async function onSubmit(): Promise<void> {
   min-height: 1.2em;
 }
 
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.list-toggle {
+  margin-bottom: 12px;
+}
+
 .message-list {
   list-style: none;
   margin: 0;
@@ -141,9 +173,16 @@ async function onSubmit(): Promise<void> {
   white-space: nowrap;
 }
 
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.location,
 .time {
   font-size: 0.78rem;
-  flex-shrink: 0;
 }
 
 .body {

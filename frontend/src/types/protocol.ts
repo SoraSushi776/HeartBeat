@@ -77,6 +77,8 @@ export interface Message {
   author: string
   content: string
   created_ts: number
+  expose_ip?: boolean
+  location?: string | null
 }
 
 export interface MessageList {
