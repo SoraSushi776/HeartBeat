@@ -32,6 +32,7 @@ def run() -> None:
     app.setApplicationName("HeartBeatClient")
 
     config_store = ConfigStore(config_path())
+    first_run = not config_store.exists()
     secret_store = JsonSecretStore(secrets_path())
     manager = WindowManager.initialize(config_store, secret_store, launch_command())
     config = manager.config
@@ -52,10 +53,14 @@ def run() -> None:
 
     tray = TrayController(on_open=manager.show_settings, on_quit=handle_quit)
     tray.show()
-    if not config.ui.start_minimized:
+    if first_run or not config.ui.start_minimized:
         manager.show_settings()
 
     logger.info("HeartBeat client started")
     app.exec()
     thread.quit()
     thread.wait(3000)
+
+
+if __name__ == "__main__":
+    run()

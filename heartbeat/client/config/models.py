@@ -53,7 +53,7 @@ def _section(data: dict[str, Any], key: str) -> dict[str, Any]:
 
 @dataclass
 class ServerConfig:
-    base_url: str = "https://example.com"
+    base_url: str = "http://127.0.0.1:8000"
     timeout_seconds: float = 10.0
 
     @classmethod

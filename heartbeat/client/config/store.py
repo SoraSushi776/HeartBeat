@@ -33,6 +33,10 @@ class ConfigStore:
     def path(self) -> Path:
         return self._path
 
+    def exists(self) -> bool:
+        """Return True when client.json is already on disk."""
+        return self._path.exists()
+
     def load(self) -> AppConfig:
         """Read client.json and fall back to defaults on bad data."""
         raw = self._read_json()

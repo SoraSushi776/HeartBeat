@@ -32,7 +32,7 @@ class CollectorWorker(QObject):
     """Collect local state on a timer and push heartbeats to the server."""
 
     snapshot_ready = Signal(object)
-    push_succeeded = Signal(int)
+    push_succeeded = Signal(float)
     push_failed = Signal(str, int)
     finished = Signal()
 
@@ -49,7 +49,7 @@ class CollectorWorker(QObject):
         self._gate = gate
         self._collectors = collectors
         self._attempt = 0
-        self._timer = QTimer()
+        self._timer = QTimer(self)
         self._timer.timeout.connect(self._on_tick)
 
     @Slot()
@@ -126,7 +126,7 @@ class CollectorWorker(QObject):
             return
         self._attempt = 0
         self._timer.start(self._interval_ms())
-        self.push_succeeded.emit(int(payload.get("ts", 0)))
+        self.push_succeeded.emit(float(payload.get("ts", 0)))
         upload_url = data.get("screenshot_upload_url")
         if upload_url and screenshot is not None:
             self._put_screenshot(str(upload_url), payload.get("ts"), screenshot)
