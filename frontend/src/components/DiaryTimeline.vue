@@ -60,10 +60,30 @@ const groups = computed(() => {
     list.push(diary)
     map.set(key, list)
   }
-  return Array.from(map.entries()).map(([label, items]) => ({
-    label,
-    items: items.slice().sort((a, b) => b.created_ts - a.created_ts),
-  }))
+  return Array.from(map.entries()).map(([label, items]) => {
+    const date = new Date(items[0].created_ts)
+    return {
+      label,
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      items: items.slice().sort((a, b) => b.created_ts - a.created_ts),
+    }
+  })
+})
+
+const yearGroups = computed(() => {
+  const map = new Map<number, typeof groups.value>()
+  for (const group of groups.value) {
+    const list = map.get(group.year) ?? []
+    list.push(group)
+    map.set(group.year, list)
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, months]) => ({
+      year,
+      months: months.slice().sort((a, b) => b.month - a.month),
+    }))
 })
 
 const activeItems = computed(() => {
@@ -162,20 +182,25 @@ watch([query, activeTag], () => {
   <div class="diary-page">
     <aside class="rail" aria-label="月份导航">
       <h3 class="rail-title">时间轴</h3>
-      <nav v-if="groups.length" class="rail-list">
-        <button
-          v-for="group in groups"
-          :key="group.label"
-          type="button"
-          class="rail-item"
-          :class="{ 'is-active': activeMonth === group.label }"
-          @click="jumpToMonth(group.label)"
-        >
-          <span class="rail-dot" aria-hidden="true"></span>
-          <span class="rail-label">{{ group.label }}</span>
-          <span class="muted">{{ group.items.length }}</span>
-        </button>
-      </nav>
+      <div v-if="yearGroups.length" class="year-list">
+        <section v-for="yearGroup in yearGroups" :key="yearGroup.year" class="year-block">
+          <div class="year-label">{{ yearGroup.year }}</div>
+          <div class="month-grid">
+            <button
+              v-for="month in yearGroup.months"
+              :key="month.label"
+              type="button"
+              class="month-chip"
+              :class="{ 'is-active': activeMonth === month.label }"
+              :title="`${month.month} 月 · ${month.items.length} 篇`"
+              @click="jumpToMonth(month.label)"
+            >
+              <span class="month-num">{{ month.month }} 月</span>
+              <span class="month-count">{{ month.items.length }}</span>
+            </button>
+          </div>
+        </section>
+      </div>
       <p v-else class="muted rail-empty">暂无月份</p>
     </aside>
 
@@ -322,7 +347,7 @@ watch([query, activeTag], () => {
 <style scoped>
 .diary-page {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: 180px minmax(0, 1fr);
   gap: var(--page-gap);
   align-items: start;
 }
@@ -330,61 +355,78 @@ watch([query, activeTag], () => {
 .rail {
   position: sticky;
   top: 16px;
-  padding: 12px;
+  padding: 14px 12px;
   border-radius: var(--md-sys-shape-corner-medium);
   background: color-mix(in srgb, var(--md-sys-color-surface-container) 88%, transparent);
   border: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .rail-title {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font: var(--md-sys-typescale-label);
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.rail-list {
+.year-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.year-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.year-label {
+  font: var(--md-sys-typescale-title);
+  font-size: 1.05rem;
+  padding: 8px 10px;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+  color: var(--md-sys-color-primary);
+  text-align: center;
+}
+
+.month-grid {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.rail-item {
+.month-chip {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-high);
   color: inherit;
   cursor: pointer;
   text-align: left;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
 }
 
-.rail-item:hover {
-  background: var(--md-sys-color-surface-container-high);
+.month-chip:hover {
+  background: var(--md-sys-color-surface-container-highest);
 }
 
-.rail-item.is-active {
-  background: color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
-  color: var(--md-sys-color-primary);
+.month-chip.is-active {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
-.rail-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-
-.rail-label {
+.month-num {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.month-count {
+  opacity: 0.75;
+  font-size: 0.8rem;
 }
 
 .rail-empty {
@@ -653,9 +695,13 @@ watch([query, activeTag], () => {
     position: static;
   }
 
-  .rail-list {
+  .month-grid {
     flex-direction: row;
     flex-wrap: wrap;
+  }
+
+  .month-chip {
+    flex: 1 1 120px;
   }
 
   .latest-body {
