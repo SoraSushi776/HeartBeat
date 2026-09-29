@@ -9,10 +9,52 @@ const activeMonth = ref<string | null>(null)
 const loadingMonth = ref<string | null>(null)
 const expandedId = ref<number | null>(null)
 const closeBtn = ref<HTMLButtonElement | null>(null)
+const query = ref("")
+const activeTag = ref("")
+const monthRefs = new Map<string, HTMLElement>()
+
+const allTags = computed(() => {
+  const set = new Set<string>()
+  for (const item of store.diaries.value) {
+    for (const tag of item.tags ?? []) {
+      if (tag) {
+        set.add(tag)
+      }
+    }
+    if (item.mood) {
+      set.add(item.mood)
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return store.diaries.value.filter((item) => {
+    if (activeTag.value) {
+      const tags = item.tags ?? []
+      const hasTag = tags.includes(activeTag.value) || item.mood === activeTag.value
+      if (!hasTag) {
+        return false
+      }
+    }
+    if (!q) {
+      return true
+    }
+    const hay = `${item.title}\n${item.content}`.toLowerCase()
+    return hay.includes(q)
+  })
+})
+
+const latest = computed(() => {
+  return store.diaries.value
+    .slice()
+    .sort((a, b) => b.created_ts - a.created_ts)[0] ?? null
+})
 
 const groups = computed(() => {
   const map = new Map<string, Diary[]>()
-  for (const diary of store.diaries.value) {
+  for (const diary of filtered.value) {
     const key = monthLabel(diary.created_ts)
     const list = map.get(key) ?? []
     list.push(diary)
@@ -30,12 +72,30 @@ const activeItems = computed(() => {
 })
 
 const expanded = computed(() => {
-  return activeItems.value.find((item) => item.id === expandedId.value) ?? null
+  const all = store.diaries.value
+  return all.find((item) => item.id === expandedId.value) ?? null
 })
 
+const latestPreview = computed(() => {
+  if (!latest.value) {
+    return ""
+  }
+  return clampText(latest.value.content, 120)
+})
+
+function clampText(text: string, max: number): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  return normalized.length > max ? `${normalized.slice(0, max)}…` : normalized
+}
+
 function preview(item: Diary): string {
-  const text = item.content.replace(/\s+/g, " ").trim()
-  return text.length > 64 ? `${text.slice(0, 64)}…` : text
+  return clampText(item.content, 64)
+}
+
+function setMonthRef(label: string, el: unknown): void {
+  if (el instanceof HTMLElement) {
+    monthRefs.set(label, el)
+  }
 }
 
 async function toggleMonth(label: string): Promise<void> {
@@ -55,12 +115,24 @@ async function toggleMonth(label: string): Promise<void> {
   }, 220)
 }
 
+function jumpToMonth(label: string): void {
+  void toggleMonth(label)
+  window.setTimeout(() => {
+    monthRefs.get(label)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, 30)
+}
+
 function openEntry(item: Diary): void {
   expandedId.value = item.id
 }
 
 function closeEntry(): void {
   expandedId.value = null
+}
+
+function clearFilters(): void {
+  query.value = ""
+  activeTag.value = ""
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -79,51 +151,142 @@ watch(expanded, async (value) => {
   }
   window.removeEventListener("keydown", onKeydown)
 })
+
+watch([query, activeTag], () => {
+  activeMonth.value = null
+  expandedId.value = null
+})
 </script>
 
 <template>
-  <section class="card">
-    <h2 class="card-title">日记</h2>
-    <div v-if="groups.length" class="months">
-      <article v-for="group in groups" :key="group.label" class="month">
+  <div class="diary-page">
+    <aside class="rail" aria-label="月份导航">
+      <h3 class="rail-title">时间轴</h3>
+      <nav v-if="groups.length" class="rail-list">
         <button
+          v-for="group in groups"
+          :key="group.label"
           type="button"
-          class="month-head"
-          :class="{ 'is-open': activeMonth === group.label }"
-          @click="toggleMonth(group.label)"
+          class="rail-item"
+          :class="{ 'is-active': activeMonth === group.label }"
+          @click="jumpToMonth(group.label)"
         >
-          <span class="month-title">{{ group.label }}</span>
-          <span class="muted count">{{ group.items.length }} 篇</span>
-          <span class="caret" aria-hidden="true"></span>
+          <span class="rail-dot" aria-hidden="true"></span>
+          <span class="rail-label">{{ group.label }}</span>
+          <span class="muted">{{ group.items.length }}</span>
         </button>
-        <div v-if="activeMonth === group.label" class="month-body">
-          <div v-if="loadingMonth === group.label" class="loading">
-            <span class="spinner" aria-hidden="true"></span>
-            <span class="muted">加载中…</span>
+      </nav>
+      <p v-else class="muted rail-empty">暂无月份</p>
+    </aside>
+
+    <main class="main">
+      <section v-if="latest" class="card latest-card">
+        <h2 class="card-title">
+          最新日记
+          <span class="chip">{{ formatTs(latest.created_ts) }}</span>
+        </h2>
+        <div class="latest-body">
+          <div class="latest-text">
+            <strong class="latest-title">{{ latest.title }}</strong>
+            <p class="latest-preview">{{ latestPreview }}</p>
+            <div class="tags">
+              <span v-if="latest.mood" class="chip">{{ latest.mood }}</span>
+              <span v-for="tag in latest.tags ?? []" :key="tag" class="chip">{{ tag }}</span>
+            </div>
           </div>
-          <TransitionGroup v-else name="list" tag="div" class="entries">
-            <article v-for="item in activeItems" :key="item.id" class="entry">
-              <div class="entry-head">
-                <strong>{{ item.title }}</strong>
-                <span class="muted">{{ formatTs(item.created_ts) }}</span>
-              </div>
-              <p class="clamped">{{ preview(item) }}</p>
-              <div class="entry-foot">
-                <div class="tags">
-                  <span v-if="item.mood" class="chip">{{ item.mood }}</span>
-                  <span v-for="tag in item.tags ?? []" :key="tag" class="chip">{{ tag }}</span>
-                </div>
-                <button type="button" class="btn btn-ghost more" @click="openEntry(item)">
-                  阅读全文
-                </button>
-              </div>
-            </article>
-          </TransitionGroup>
+          <button type="button" class="btn more" @click="openEntry(latest)">阅读全文</button>
         </div>
-      </article>
-    </div>
-    <p v-else class="muted empty">暂无日记</p>
-  </section>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">日记</h2>
+        <div class="toolbar">
+          <input
+            v-model="query"
+            class="search"
+            type="search"
+            placeholder="搜索标题或正文…"
+            aria-label="搜索日记"
+          />
+          <div class="tag-row">
+            <button
+              type="button"
+              class="chip tag-btn"
+              :class="{ 'is-active': !activeTag }"
+              @click="activeTag = ''"
+            >
+              全部
+            </button>
+            <button
+              v-for="tag in allTags"
+              :key="tag"
+              type="button"
+              class="chip tag-btn"
+              :class="{ 'is-active': activeTag === tag }"
+              @click="activeTag = tag"
+            >
+              {{ tag }}
+            </button>
+          </div>
+          <button
+            v-if="query || activeTag"
+            type="button"
+            class="btn btn-ghost clear"
+            @click="clearFilters"
+          >
+            清除筛选
+          </button>
+        </div>
+
+        <div v-if="groups.length" class="months">
+          <article
+            v-for="group in groups"
+            :key="group.label"
+            :ref="(el) => setMonthRef(group.label, el)"
+            class="month"
+          >
+            <button
+              type="button"
+              class="month-head"
+              :class="{ 'is-open': activeMonth === group.label }"
+              @click="toggleMonth(group.label)"
+            >
+              <span class="month-title">{{ group.label }}</span>
+              <span class="muted count">{{ group.items.length }} 篇</span>
+              <span class="caret" aria-hidden="true"></span>
+            </button>
+            <div v-if="activeMonth === group.label" class="month-body">
+              <div v-if="loadingMonth === group.label" class="loading">
+                <span class="spinner" aria-hidden="true"></span>
+                <span class="muted">加载中…</span>
+              </div>
+              <TransitionGroup v-else name="list" tag="div" class="entries">
+                <article v-for="item in activeItems" :key="item.id" class="entry">
+                  <div class="entry-head">
+                    <strong>{{ item.title }}</strong>
+                    <span class="muted">{{ formatTs(item.created_ts) }}</span>
+                  </div>
+                  <p class="clamped">{{ preview(item) }}</p>
+                  <div class="entry-foot">
+                    <div class="tags">
+                      <span v-if="item.mood" class="chip">{{ item.mood }}</span>
+                      <span v-for="tag in item.tags ?? []" :key="tag" class="chip">{{ tag }}</span>
+                    </div>
+                    <button type="button" class="btn btn-ghost more" @click="openEntry(item)">
+                      阅读全文
+                    </button>
+                  </div>
+                </article>
+              </TransitionGroup>
+            </div>
+          </article>
+        </div>
+        <p v-else class="muted empty">
+          {{ query || activeTag ? "没有匹配的日记" : "暂无日记" }}
+        </p>
+      </section>
+    </main>
+  </div>
 
   <Teleport to="body">
     <Transition name="fade">
@@ -157,10 +320,152 @@ watch(expanded, async (value) => {
 </template>
 
 <style scoped>
+.diary-page {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--page-gap);
+  align-items: start;
+}
+
+.rail {
+  position: sticky;
+  top: 16px;
+  padding: 12px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 88%, transparent);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.rail-title {
+  margin: 0 0 10px;
+  font: var(--md-sys-typescale-label);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.86rem;
+}
+
+.rail-item:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.rail-item.is-active {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
+  color: var(--md-sys-color-primary);
+}
+
+.rail-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.rail-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-empty {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.latest-card {
+  margin-bottom: 0;
+}
+
+.latest-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.latest-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.latest-title {
+  display: block;
+  font: var(--md-sys-typescale-title);
+  margin-bottom: 8px;
+}
+
+.latest-preview {
+  margin: 0 0 12px;
+  line-height: 1.7;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.search {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.search:focus {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-btn {
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.tag-btn.is-active {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.clear {
+  align-self: flex-start;
+}
+
 .months {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .month {
@@ -168,6 +473,7 @@ watch(expanded, async (value) => {
   border-radius: var(--md-sys-shape-corner-medium);
   overflow: hidden;
   background: color-mix(in srgb, var(--md-sys-color-surface) 92%, transparent);
+  scroll-margin-top: 16px;
 }
 
 .month-head {
@@ -205,6 +511,7 @@ watch(expanded, async (value) => {
   transform: rotate(45deg);
   opacity: 0.7;
   transition: transform 0.15s ease;
+  flex-shrink: 0;
 }
 
 .month-head.is-open .caret {
@@ -212,14 +519,14 @@ watch(expanded, async (value) => {
 }
 
 .month-body {
-  padding: 0 12px 12px;
+  padding: 0 16px 16px;
 }
 
 .loading {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 8px;
+  padding: 18px 4px;
 }
 
 .spinner {
@@ -240,13 +547,14 @@ watch(expanded, async (value) => {
 .entries {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .entry {
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
 }
 
 .entry-head {
@@ -257,8 +565,8 @@ watch(expanded, async (value) => {
 }
 
 .clamped {
-  margin: 8px 0;
-  line-height: 1.6;
+  margin: 10px 0;
+  line-height: 1.65;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -280,10 +588,19 @@ watch(expanded, async (value) => {
 
 .more {
   flex-shrink: 0;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .empty {
   margin: 0;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+  min-width: 0;
 }
 
 .overlay {
@@ -325,5 +642,24 @@ watch(expanded, async (value) => {
   margin-top: 14px;
   line-height: 1.75;
   white-space: pre-wrap;
+}
+
+@media (max-width: 800px) {
+  .diary-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail {
+    position: static;
+  }
+
+  .rail-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .latest-body {
+    flex-direction: column;
+  }
 }
 </style>
