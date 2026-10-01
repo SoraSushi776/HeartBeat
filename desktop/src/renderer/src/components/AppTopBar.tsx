@@ -34,10 +34,9 @@ const VARIANTS: SchemeVariant[] = ['tonalSpot', 'vibrant', 'expressive', 'conten
 
 interface AppTopBarProps {
   page: PageId
-  isMac: boolean
 }
 
-export function AppTopBar({ page, isMac }: AppTopBarProps): ReactNode {
+export function AppTopBar({ page }: AppTopBarProps): ReactNode {
   const t = useTranslate()
   const mode = useThemePreference((state) => state.mode)
   const seed = useThemePreference((state) => state.seed)
@@ -70,7 +69,7 @@ export function AppTopBar({ page, isMac }: AppTopBarProps): ReactNode {
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        pl: isMac ? 10 : 3,
+        pl: 3,
         pr: 3,
         backgroundColor: colorVar('surface')
       }}

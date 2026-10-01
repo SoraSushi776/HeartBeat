@@ -274,7 +274,7 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
           }
         }
       },
-      MuiTextField: { defaultProps: { variant: 'filled', size: 'small' } },
+      MuiTextField: { defaultProps: { variant: 'outlined', size: 'small' } },
       MuiFilledInput: {
         styleOverrides: {
           root: {
@@ -331,12 +331,38 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
       MuiSlider: {
         styleOverrides: {
           root: { height: 4, padding: '13px 0' },
-          rail: { backgroundColor: scheme.surfaceContainerHighest, opacity: 1 },
-          track: { border: 'none', backgroundColor: scheme.primary },
+          rail: {
+            height: 16,
+            marginTop: -8,
+            borderRadius: 8,
+            backgroundColor: scheme.surfaceContainerHighest,
+            opacity: 1,
+            '&::before, &::after': {
+              content: '""',
+              position: 'absolute',
+              top: '50%',
+              width: 4,
+              height: 4,
+              borderRadius: '50%',
+              transform: 'translateY(-50%)',
+              backgroundColor: scheme.onSurfaceVariant
+            },
+            '&::before': { left: 5 },
+            '&::after': { right: 5 }
+          },
+          track: { height: 16, marginTop: -8, borderRadius: 8, border: 'none', backgroundColor: scheme.primary },
           thumb: {
-            width: 20,
-            height: 20,
-            '&:hover, &.Mui-focusVisible': { boxShadow: `0 0 0 10px ${alpha(scheme.primary, HOVER)}` }
+            width: 4,
+            height: 44,
+            borderRadius: 2,
+            backgroundColor: scheme.primary,
+            boxShadow: 'none',
+            transition: 'width 150ms ease, border-radius 150ms ease',
+            '&:hover, &.Mui-focusVisible, &.Mui-active': {
+              width: 28,
+              borderRadius: 14,
+              boxShadow: `0 0 0 8px ${alpha(scheme.primary, HOVER)}`
+            }
           }
         }
       },

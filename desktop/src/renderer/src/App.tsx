@@ -22,7 +22,6 @@ export function App(): ReactNode {
   const setLanguage = useLanguage((state) => state.setLanguage)
   const [bundle, setBundle] = useState<ConfigBundle | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
-  const isMac = bridge.app.platform === 'darwin'
 
   useEffect(() => {
     void bridge.config
@@ -39,7 +38,7 @@ export function App(): ReactNode {
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: colorVar('surface') }}>
       <NavigationRail active={page} onSelect={setPage} />
       <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <AppTopBar page={page} isMac={isMac} />
+        <AppTopBar page={page} />
         {page === 'settings' ? <SettingsPage /> : null}
         {page === 'diagnostics' ? <DiagnosticsPage /> : null}
         {page === 'diary' ? <DiaryPage /> : null}

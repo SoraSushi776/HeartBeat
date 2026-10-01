@@ -26,12 +26,12 @@ export function NavigationRail({ active, onSelect }: NavigationRailProps): React
         flexDirection: 'column',
         alignItems: 'center',
         gap: 1.5,
-        pt: 'var(--md-sys-top-bar-height)',
         pb: 2,
         backgroundColor: colorVar('surface'),
         borderRight: `1px solid ${colorVar('outline-variant')}`
       }}
     >
+      <Box className="app-drag-region" sx={{ height: 'var(--md-sys-top-bar-height)', width: '100%', flexShrink: 0 }} />
       {DESTINATIONS.map((destination) => {
         const selected = destination.id === active
         const Icon = destination.icon
