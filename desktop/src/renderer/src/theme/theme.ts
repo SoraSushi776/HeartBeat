@@ -333,8 +333,9 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
         styleOverrides: {
           root: { height: 4, padding: '13px 0' },
           rail: {
+            // MUI 默认横向定位自带 top:50% + translateY(-50%) 居中，
+            // 这里不要再加 marginTop（会和 translateY 叠加导致轨道上移）。
             height: 16,
-            marginTop: -8,
             borderRadius: 999,
             backgroundColor: scheme.surfaceContainerHighest,
             opacity: 1,
@@ -354,7 +355,6 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
           },
           track: {
             height: 16,
-            marginTop: -8,
             borderRadius: 999,
             border: 'none',
             backgroundColor: scheme.primary,
