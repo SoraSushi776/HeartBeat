@@ -5,6 +5,7 @@ import Box from '@mui/material/Box'
 import { AppTopBar } from './components/AppTopBar'
 import { NavigationRail } from './components/NavigationRail'
 import { DiagnosticsPage } from './pages/DiagnosticsPage'
+import { DiaryPage } from './pages/DiaryPage'
 import { PendingPage } from './pages/PendingPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { useLanguage } from './i18n'
@@ -32,7 +33,7 @@ export function App(): ReactNode {
         <AppTopBar page={page} isMac={isMac} />
         {page === 'settings' ? <SettingsPage /> : null}
         {page === 'diagnostics' ? <DiagnosticsPage /> : null}
-        {page === 'diary' ? <PendingPage page="diary" hint="日记列表 + Markdown 编辑与预览" /> : null}
+        {page === 'diary' ? <DiaryPage /> : null}
         {page === 'friends' ? <PendingPage page="friends" hint="友链列表 + 表单" /> : null}
         {page === 'messages' ? <PendingPage page="messages" hint="留言列表 + 封禁管理" /> : null}
       </Box>
