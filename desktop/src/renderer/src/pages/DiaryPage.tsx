@@ -136,12 +136,12 @@ export function DiaryPage(): ReactNode {
         </Box>
       }
     >
-      <Box sx={{ display: 'flex', gap: 2, minHeight: 0, flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', gap: 2, minHeight: 420, flexGrow: 1 }}>
         <Box
           sx={{
             width: 300,
             flexShrink: 0,
-            borderRadius: 4,
+            borderRadius: 'var(--md-sys-shape-corner-large)',
             backgroundColor: colorVar('surface-container-low'),
             border: `1px solid ${colorVar('outline-variant')}`,
             overflowY: 'auto',
@@ -184,7 +184,7 @@ export function DiaryPage(): ReactNode {
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
-            borderRadius: 4,
+            borderRadius: 'var(--md-sys-shape-corner-large)',
             backgroundColor: colorVar('surface-container-low'),
             border: `1px solid ${colorVar('outline-variant')}`,
             overflow: 'hidden'

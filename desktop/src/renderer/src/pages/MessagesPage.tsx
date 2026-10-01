@@ -149,7 +149,7 @@ export function MessagesPage(): ReactNode {
               <Box
                 key={item.id}
                 sx={{
-                  borderRadius: 3,
+                  borderRadius: 'var(--md-sys-shape-corner-large)',
                   border: `1px solid ${colorVar('outline-variant')}`,
                   backgroundColor: current?.id === item.id ? colorVar('surface-container') : 'transparent',
                   p: 1.5,
@@ -159,7 +159,7 @@ export function MessagesPage(): ReactNode {
               >
                 <ListItemButton
                   onClick={() => setActive(item)}
-                  sx={{ flexGrow: 1, alignItems: 'flex-start', borderRadius: 3, p: 0.5, minWidth: 0 }}
+                  sx={{ flexGrow: 1, alignItems: 'flex-start', borderRadius: 'var(--md-sys-shape-corner-large)', p: 0.5, minWidth: 0 }}
                 >
                   <Box sx={{ minWidth: 0, width: '100%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>

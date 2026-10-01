@@ -36,9 +36,9 @@ export function App(): ReactNode {
   }, [setLanguage])
 
   return (
-    <Box sx={{ display: 'flex', height: '100%', backgroundColor: colorVar('surface') }}>
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: colorVar('surface') }}>
       <NavigationRail active={page} onSelect={setPage} />
-      <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <AppTopBar page={page} isMac={isMac} />
         {page === 'settings' ? <SettingsPage /> : null}
         {page === 'diagnostics' ? <DiagnosticsPage /> : null}

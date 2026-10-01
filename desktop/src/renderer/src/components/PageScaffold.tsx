@@ -25,7 +25,9 @@ export function PageScaffold({ page, title, actions, children }: PageScaffoldPro
         flexDirection: 'column',
         gap: 2,
         px: 3,
-        pb: 3
+        pt: 2,
+        pb: 3,
+        overflow: 'hidden'
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
@@ -39,7 +41,17 @@ export function PageScaffold({ page, title, actions, children }: PageScaffoldPro
         </Box>
         {actions}
       </Box>
-      <Box sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box
+        sx={{
+          flexGrow: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2
+        }}
+      >
         {children}
       </Box>
     </Box>
