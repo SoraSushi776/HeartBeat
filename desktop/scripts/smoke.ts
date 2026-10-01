@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { CollectorRegistry } from '../src/main/adapters/index'
 import { currentPlatform } from '../src/main/adapters/platform'
 import { runCommand } from '../src/main/adapters/shell'
+import { HeartbeatApi } from '../src/main/api'
 import { buildDesktopEntry, commandLine as linuxCommandLine, desktopEntryPath } from '../src/main/app/autostart/linux'
 import { buildPlist, launchctlArgs, plistPath } from '../src/main/app/autostart/macos'
 import { RUN_KEY, registryAddArgs, registryDeleteArgs, registryQueryArgs } from '../src/main/app/autostart/windows'
@@ -388,10 +389,37 @@ if (process.argv.includes('--live')) {
     process.stdout.write(`  info whitelist=${live.process_whitelist.length} collect_all=${live.process_collect_all} language=${live.ui.language}\n`)
   }
   check('client.secrets.json exists', existsSync(secretsFile), secretsFile)
+  const secrets = secretsSchema.parse(readJsonFile(secretsFile))
   if (existsSync(secretsFile)) {
-    const secrets = secretsSchema.parse(readJsonFile(secretsFile))
     check('api_key present', secrets.api_key.length > 0, `length=${secrets.api_key.length}`)
     check('github_token present', secrets.github_token.length > 0, `length=${secrets.github_token.length}`)
+  }
+
+  if (process.argv.includes('--server')) {
+    group('live server (read only)')
+    const api = new HeartbeatApi({
+      baseUrl: live.server.base_url,
+      apiKey: secrets.api_key,
+      timeoutSeconds: live.server.timeout_seconds,
+      clientVersion: '0.2.0',
+      clientId: live.client_id
+    })
+    try {
+      const messages = await api.listMessages(1, 0)
+      const list = Array.isArray(messages)
+        ? messages
+        : ((messages as { items?: unknown[] })?.items ?? [])
+      check('admin message list accepted', Array.isArray(list), `${list.length} rows`)
+    } catch (error) {
+      check('admin message list accepted', false, String(error))
+    }
+    try {
+      const bans = await api.listMessageBans()
+      const list = Array.isArray(bans) ? bans : ((bans as { items?: unknown[] })?.items ?? [])
+      check('ban list accepted', Array.isArray(list), `${list.length} rows`)
+    } catch (error) {
+      check('ban list accepted', false, String(error))
+    }
   }
 
   group('live collectors')

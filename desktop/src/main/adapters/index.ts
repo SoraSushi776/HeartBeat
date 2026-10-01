@@ -31,7 +31,15 @@ export function createMediaAdapter(platform: Platform = currentPlatform()): Medi
   return MEDIA_FACTORIES[platform]()
 }
 
-export class CollectorRegistry {
+export interface CollectorBundle {
+  collectScreenshot: (gate: PrivacyGate) => Promise<ScreenshotResult | null>
+  collectMedia: (gate: PrivacyGate) => Promise<MediaInfo | null>
+  collectProcesses: (gate: PrivacyGate) => Promise<ProcessInfo[]>
+  collectSystem: (gate: PrivacyGate) => Promise<SystemInfo | null>
+  update: (config: CollectorConfig) => void
+}
+
+export class CollectorRegistry implements CollectorBundle {
   readonly screenshot: ScreenshotAdapter
   readonly media: MediaAdapter
   readonly processes: SystemInformationProcessAdapter

@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { appConfigStore, configPath, platformKey, secretStore, type Language } from './config'
 import { logger } from './logger'
 import { translator } from './i18n'
+import { CollectorHost } from './collector-host'
 import { createAutostartProvider, syncAutostart } from './app/autostart'
 import { applyDockPolicy, launchTarget } from './app/runtime'
 import { MainWindowController } from './app/main-window'
@@ -31,7 +32,7 @@ function bootstrap(): void {
 
     const firstRun = !existsSync(configPath())
     const config = appConfigStore.load()
-    secretStore.load()
+    const secrets = secretStore.load()
     logger.info(`Client starting, first_run=${firstRun} platform=${platformKey()}`)
 
     const provider = createAutostartProvider(launchTarget())
@@ -58,6 +59,15 @@ function bootstrap(): void {
 
     appConfigStore.subscribe((next) => tray.updateLabels(trayLabels(next.ui.language)))
 
+    const host = new CollectorHost(app.getVersion(), {
+      onSnapshot: (payload) => logger.debug(`Snapshot ready ts=${payload.ts}`),
+      onPushResult: (record) =>
+        logger.info(`Push ${record.ok ? 'ok' : 'failed'}: ${record.detail}`)
+    })
+    host.start(config, secrets)
+    appConfigStore.subscribe((next) => host.apply(next, secretStore.get()))
+    secretStore.subscribe((next) => host.apply(appConfigStore.get(), next))
+
     const showWindow = firstRun || !config.setup_completed || !config.ui.start_minimized
     if (showWindow) {
       windows.show()
@@ -69,7 +79,10 @@ function bootstrap(): void {
       }
     })
 
-    app.on('will-quit', () => tray.destroy())
+    app.on('will-quit', () => {
+      host.stop()
+      tray.destroy()
+    })
   })
 
   app.on('second-instance', () => {
