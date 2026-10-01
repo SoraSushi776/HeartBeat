@@ -5,10 +5,12 @@ import { appConfigStore, configPath, platformKey, secretStore, type Language } f
 import { logger } from './logger'
 import { translator } from './i18n'
 import { CollectorHost } from './collector-host'
+import { registerIpc } from './ipc'
 import { createAutostartProvider, syncAutostart } from './app/autostart'
 import { applyDockPolicy, launchTarget } from './app/runtime'
 import { MainWindowController } from './app/main-window'
 import { TrayController, type TrayMenuLabels } from './app/tray'
+import { IPC } from '../shared/ipc'
 
 let quitting = false
 
@@ -60,13 +62,12 @@ function bootstrap(): void {
     appConfigStore.subscribe((next) => tray.updateLabels(trayLabels(next.ui.language)))
 
     const host = new CollectorHost(app.getVersion(), {
-      onSnapshot: (payload) => logger.debug(`Snapshot ready ts=${payload.ts}`),
-      onPushResult: (record) =>
-        logger.info(`Push ${record.ok ? 'ok' : 'failed'}: ${record.detail}`)
+      onPushResult: (record) => windows.send(IPC.eventPushResult, record)
     })
     host.start(config, secrets)
     appConfigStore.subscribe((next) => host.apply(next, secretStore.get()))
     secretStore.subscribe((next) => host.apply(appConfigStore.get(), next))
+    registerIpc({ host, isQuitting: () => quitting })
 
     const showWindow = firstRun || !config.setup_completed || !config.ui.start_minimized
     if (showWindow) {

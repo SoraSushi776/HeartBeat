@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import type { AppConfig as SharedAppConfig, Secrets as SharedSecrets } from '../../shared/config'
+
 export const HEARTBEAT_INTERVAL_RANGE = { min: 5, max: 3600 } as const
 export const BLUR_RADIUS_RANGE = { min: 0, max: 100 } as const
 export const SCALE_RANGE = { min: 0.05, max: 1 } as const
@@ -200,3 +202,15 @@ export function defaultConfig(): AppConfig {
 export function defaultSecrets(): Secrets {
   return secretsSchema.parse({})
 }
+
+export const CONFIG_CONTRACT: SharedAppConfig extends AppConfig
+  ? AppConfig extends SharedAppConfig
+    ? true
+    : false
+  : false = true
+
+export const SECRETS_CONTRACT: SharedSecrets extends Secrets
+  ? Secrets extends SharedSecrets
+    ? true
+    : false
+  : false = true

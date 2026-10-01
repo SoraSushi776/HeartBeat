@@ -1,4 +1,4 @@
-import type { HeartbeatBridge } from './index'
+import type { HeartbeatBridge } from '../shared/ipc'
 
 declare global {
   interface Window {

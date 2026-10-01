@@ -53,6 +53,10 @@ export class CollectorHost {
     return this.collector?.pushHistory ?? []
   }
 
+  get apiService(): HeartbeatApi {
+    return this.api
+  }
+
   get collectorInstance(): HeartbeatCollector | null {
     return this.collector
   }
