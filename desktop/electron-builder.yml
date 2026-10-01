@@ -1,0 +1,43 @@
+appId: com.heartbeat.client
+productName: HeartBeat
+copyright: Copyright © SoraSushi776
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - '!src/**/*'
+  - '!scripts/**/*'
+  - '!node_modules/.tmp/**/*'
+
+extraResources:
+  - from: ../resources/icons
+    to: icons
+
+asarUnpack:
+  - '**/node_modules/sharp/**/*'
+  - '**/node_modules/@img/**/*'
+
+mac:
+  category: public.app-category.utilities
+  icon: ../resources/icons/HeartBeat.icns
+  target:
+    - dmg
+  extendInfo:
+    LSUIElement: true
+    NSAppleEventsUsageDescription: HeartBeat 需要读取当前播放的音乐信息。
+    NSScreenCaptureUsageDescription: HeartBeat 需要截屏并在本机模糊后才上传。
+
+win:
+  icon: ../resources/icons/icon_256.png
+  target:
+    - nsis
+
+linux:
+  icon: ../resources/icons/icon_256.png
+  category: Utility
+  target:
+    - AppImage
