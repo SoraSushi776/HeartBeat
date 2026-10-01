@@ -1,6 +1,6 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles'
 
-import { STATE_TOKENS, type ColorScheme } from './material-you'
+import { STATE_TOKENS, colorVar, type ColorScheme } from './material-you'
 
 export const FONT_STACK = [
   'Roboto',
@@ -365,7 +365,20 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
             height: 44,
             borderRadius: 999,
             backgroundColor: scheme.primary,
-            boxShadow: `0 1px 3px ${alpha(scheme.onSurface, 0.4)}`,
+            // 官方 M3 更新版：手柄两侧与轨道断开（各留 6dp 缝），轨道不从手柄底下穿过。
+            // ::after 用 z-index:-1 垫在手柄 bar 之下、轨道之上，中间 4px 透明露出手柄本体。
+            // 背景色取滑条实际所在容器（SectionCard = surface-container-low）。
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 16,
+              height: 16,
+              zIndex: -1,
+              background: `linear-gradient(90deg, ${colorVar('surface-container-low')} 0 6px, transparent 6px 10px, ${colorVar('surface-container-low')} 10px 16px)`
+            },
             '&::before': {
               content: '""',
               position: 'absolute',
