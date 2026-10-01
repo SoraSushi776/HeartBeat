@@ -22,10 +22,11 @@ def ensure_icons() -> None:
 
 
 def ensure_deploy() -> str:
-    candidate = shutil.which("pyside6-deploy")
-    if candidate:
-        return candidate
-    run([sys.executable, "-m", "pip", "install", "pyside6-deploy", "nuitka", "ordered-set", "zstandard"])
+    """Return the pyside6-deploy executable, installing its Nuitka dependencies."""
+    run([sys.executable, "-m", "pip", "install", "-q", "nuitka", "ordered-set", "zstandard"])
+    beside = Path(sys.executable).with_name("pyside6-deploy")
+    if beside.exists():
+        return str(beside)
     return shutil.which("pyside6-deploy") or ""
 
 
@@ -33,10 +34,13 @@ def main() -> None:
     ensure_icons()
     deploy = ensure_deploy()
     if not deploy:
-        print("pyside6-deploy not found on PATH", file=sys.stderr)
+        print("pyside6-deploy not found. It ships inside PySide6, not on PyPI.", file=sys.stderr)
         raise SystemExit(1)
+    if sys.prefix != sys.base_prefix:
+        os.environ.setdefault("VIRTUAL_ENV", sys.prefix)
     os.chdir(ROOT)
-    run([deploy, str(ENTRY)])
+    run([sys.executable, str(ROOT / "scripts" / "prepare_deploy_spec.py"), deploy, str(ENTRY)])
+    run([deploy, "--force", str(ENTRY)])
     print("Build finished. Artifacts are near the project root / pyside6-deploy output folder.")
 
 

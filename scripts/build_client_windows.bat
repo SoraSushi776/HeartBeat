@@ -76,9 +76,10 @@ if errorlevel 1 (
 )
 
 echo === Step 4: packaging tools ===
-"%PY%" -m pip install pyside6-deploy nuitka ordered-set zstandard
+REM pyside6-deploy ships inside PySide6, it is not a PyPI package.
+"%PY%" -m pip install nuitka ordered-set zstandard
 if errorlevel 1 (
-  echo [WARN] pyside6-deploy unavailable, falling back to PyInstaller...
+  echo [WARN] nuitka stack unavailable, falling back to PyInstaller...
   "%PY%" -m pip install pyinstaller
   if errorlevel 1 (
     echo [FAIL] no packager available.
@@ -116,14 +117,17 @@ if defined USE_PYINSTALLER (
 ) else (
   set DEPLOY=.venv-win\Scripts\pyside6-deploy.exe
   if not exist "%DEPLOY%" (
-    "%PY%" -m pyside6_deploy --force --name HeartBeat --mode standalone --extra-modules=Network ^
-      --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,.venv-win,assets ^
-      heartbeat\client\main.py
-  ) else (
-    "%DEPLOY%" --force --name HeartBeat --mode standalone --extra-modules=Network ^
-      --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,.venv-win,assets ^
-      heartbeat\client\main.py
+    echo [FAIL] %DEPLOY% not found.
+    echo        pyside6-deploy ships inside PySide6, not on PyPI.
+    echo        Reinstall PySide6 into .venv-win and run again.
+    exit /b 1
   )
+  REM Nuitka has its own prompts that only the spec file can silence.
+  "%PY%" scripts\prepare_deploy_spec.py "%DEPLOY%" heartbeat\client\main.py
+  if errorlevel 1 exit /b 1
+  "%DEPLOY%" --force --name HeartBeat --mode standalone --extra-modules=Network ^
+    --extra-ignore-dirs=frontend,data,docs,tests,resources,scripts,.idea,.venv,.venv-win,assets ^
+    heartbeat\client\main.py
 )
 
 if errorlevel 1 (
