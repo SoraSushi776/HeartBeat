@@ -5,10 +5,10 @@
 ## 项目结构
 
 ```text
-client/     PySide6 图形客户端、系统托盘、配置界面
 adapters/   跨平台采集适配器（截图、媒体、进程、系统负载）
 server/     FastAPI 服务端与 SQLite 存储
 frontend/   Web Dashboard
+desktop/    Electron + React 桌面客户端
 docs/       模块与系统说明文档
 scripts/    打包与构建脚本
 ```

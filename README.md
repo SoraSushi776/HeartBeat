@@ -6,14 +6,14 @@
 
 - **实时状态**：在线 / 离线指示（依据最近一次心跳时间判定）、音乐播放挂件、软件标签云、模糊快照弹窗
 - **个人主页**：GitHub 简介与贡献热力图、日记时间轴、友情链接卡片
-- **客户端**：PySide6 图形界面 + 系统托盘，全局推送开关、开机自启、细粒度隐私开关、软件白名单、截图模糊与缩放可配
+- **客户端**：Electron + React 桌面端，Material You 界面 + 系统托盘，全局推送开关、开机自启、细粒度隐私开关、软件白名单、截图模糊与缩放可配
 - **采集适配**：Windows / macOS / Linux 统一抽象，截图本地高斯模糊并压成 WebP 后再离开本机
 - **服务端**：FastAPI + SQLite + APScheduler，心跳上报、状态查询、日记与友情链接 CRUD，定时缓存 GitHub 资料并清理过期快照
 
 ## 架构
 
 ```text
-[ PySide6 客户端 ]
+[ Electron + React 客户端 ]
   ├── 跨平台采集适配器（截图 / 媒体 / 进程 / 系统负载）
   ├── 隐私开关与配置界面
   └── 异步推送 ──► [ FastAPI 服务端 ] ──► [ SQLite ]
@@ -27,7 +27,7 @@
 
 - Python 3.10+
 - Node.js 18+ 与 npm（构建前端时需要）
-- 桌面客户端额外需要图形环境（Qt）
+- 桌面客户端需要 Node.js 22+ 与 npm
 
 ## 安装
 
@@ -46,7 +46,6 @@ pip install -e .
 也可按 `pyproject.toml` 的 extras 安装：
 
 ```bash
-pip install -e ".[client]"
 pip install -e ".[windows]"        # 或 .[linux]
 pip install -e ".[dev]"
 ```
@@ -67,7 +66,7 @@ pip install -e ".[dev]"
 
 `data/secrets.json` 不进 Git，可存 `api_key`、`github_token`、`github_login` 与站点文案（`site`）。
 
-客户端配置与 API 密钥保存在本地配置文件，在图形界面里设置服务端 URL、API Key、隐私开关、软件过滤白名单与截图参数。
+桌面端配置与 API 密钥保存在本地配置文件（macOS 为 `~/Library/Application Support/HeartBeat/`），在界面里设置服务端 URL、API Key、隐私开关、软件过滤白名单与截图参数。
 
 ## 部署
 
@@ -113,11 +112,9 @@ heartbeat-server
 先在图形界面里填好服务端 URL 与 API Key，再常驻托盘运行：
 
 ```bash
-bash scripts/run_client.sh
-# 或
-python -m heartbeat.client.main
-# 或安装后的入口
-heartbeat-client
+cd desktop
+npm install
+npm run dev
 ```
 
 支持最小化到系统托盘、开机自启。各隐私开关关闭的能力不会被采集，也不会进入上报数据。
@@ -131,20 +128,20 @@ ruff check .
 
 ## 打包客户端
 
-推荐 `pyside6-deploy`（内部走 Nuitka）：
+桌面端由 electron-vite 构建，产物在 `desktop/out/`：
 
 ```bash
-pip install pyside6-deploy nuitka ordered-set zstandard
-python scripts/build_client.py
+cd desktop
+npm run build          # 类型检查 + 打包三端产物
 ```
 
-或参考 `scripts/build_client_macos.sh`、`scripts/build_client_windows.sh`。平台差异、Qt 插件与权限描述见 `docs/Packaging.md`。构建产物与安装器配置不进 Git。
+构建产物与安装器配置不进 Git。
 
 ## 项目结构
 
 ```text
+desktop/        Electron + React 桌面客户端
 heartbeat/
-├── client/     PySide6 图形客户端、系统托盘、配置界面
 ├── adapters/   跨平台采集适配器（截图、媒体、进程、系统负载）
 ├── server/     FastAPI 服务端与 SQLite 存储
 └── protocol/   上报与传输协议模型
