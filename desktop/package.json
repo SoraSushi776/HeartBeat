@@ -1,0 +1,41 @@
+{
+  "name": "heartbeat-desktop",
+  "version": "0.2.0",
+  "description": "HeartBeat desktop client",
+  "private": true,
+  "main": "./out/main/index.js",
+  "author": "SoraSushi776",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "watch": "electron-vite dev --watch",
+    "build": "npm run typecheck && electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "sharp": "^0.34.4",
+    "systeminformation": "^5.27.11",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@material/material-color-utilities": "^0.3.0",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
+    "@types/node": "^22.18.9",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.4",
+    "electron": "^38.2.2",
+    "electron-vite": "^4.0.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "zustand": "^5.0.8"
+  }
+}
