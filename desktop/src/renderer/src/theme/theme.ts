@@ -357,12 +357,8 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
             borderRadius: 2,
             backgroundColor: scheme.primary,
             boxShadow: 'none',
-            transition: 'width 150ms ease, border-radius 150ms ease',
-            '&:hover, &.Mui-focusVisible, &.Mui-active': {
-              width: 28,
-              borderRadius: 14,
-              boxShadow: `0 0 0 8px ${alpha(scheme.primary, HOVER)}`
-            }
+            '&:hover, &.Mui-active': { boxShadow: 'none' },
+            '&.Mui-focusVisible': { boxShadow: `0 0 0 8px ${alpha(scheme.primary, FOCUS)}` }
           }
         }
       },

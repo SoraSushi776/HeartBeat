@@ -221,8 +221,8 @@ export function SettingsPage(): ReactNode {
                   <SliderField
                     value={draft.config.push.interval_seconds}
                     min={5}
-                    max={3600}
-                    step={5}
+                    max={60}
+                    step={1}
                     suffix="s"
                     onChange={(value) =>
                       patchConfig((config) => {
