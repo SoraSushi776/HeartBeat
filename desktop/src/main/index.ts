@@ -5,6 +5,7 @@ import { appConfigStore, configPath, platformKey, secretStore, type Language } f
 import { logger } from './logger'
 import { translator } from './i18n'
 import { CollectorHost } from './collector-host'
+import { MessageNotifier } from './notifier'
 import { registerIpc } from './ipc'
 import { createAutostartProvider, syncAutostart } from './app/autostart'
 import { applyDockPolicy, launchTarget } from './app/runtime'
@@ -69,6 +70,12 @@ function bootstrap(): void {
     secretStore.subscribe((next) => host.apply(appConfigStore.get(), next))
     registerIpc({ host, isQuitting: () => quitting })
 
+    const notifier = new MessageNotifier(
+      () => host.apiService,
+      () => appConfigStore.get().ui.language
+    )
+    notifier.start()
+
     const showWindow = firstRun || !config.setup_completed || !config.ui.start_minimized
     if (showWindow) {
       windows.show()
@@ -81,6 +88,7 @@ function bootstrap(): void {
     })
 
     app.on('will-quit', () => {
+      notifier.stop()
       host.stop()
       tray.destroy()
     })

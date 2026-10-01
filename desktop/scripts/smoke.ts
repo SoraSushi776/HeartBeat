@@ -10,6 +10,7 @@ import { buildDesktopEntry, commandLine as linuxCommandLine, desktopEntryPath } 
 import { buildPlist, launchctlArgs, plistPath } from '../src/main/app/autostart/macos'
 import { RUN_KEY, registryAddArgs, registryDeleteArgs, registryQueryArgs } from '../src/main/app/autostart/windows'
 import { buildTrayMenuTemplate } from '../src/main/app/tray-menu'
+import { linuxCommand, macosCommand, windowsCommand } from '../src/main/notify'
 import { MediaClock } from '../src/main/adapters/media/clock'
 import { parseMetadata, unwrap } from '../src/main/adapters/media/linux'
 import { APP_SCRIPTS, installedAppScripts, parseScriptOutput } from '../src/main/adapters/media/macos'
@@ -154,6 +155,18 @@ group('autostart / Windows run key')
   check('registryAddArgs.join', add.join(' ').includes('/t REG_SZ'))
   check('delete args remove the value', registryDeleteArgs().join(' ').includes('/v HeartBeat /f'))
   check('query args read the value', registryQueryArgs()[0] === 'query')
+}
+
+group('notifications')
+{
+  const mac = macosCommand('HeartBeat', 'hello "world"')
+  check('macos uses osascript', mac[0] === 'osascript' && mac[1] === '-e')
+  check('macos escapes quotes', mac[2].includes('\\"world\\"'), mac[2])
+  const win = windowsCommand('HeartBeat', 'a & b')
+  check('windows uses powershell', win[0] === 'powershell')
+  check('windows escapes xml', win[4].includes('a &amp; b'))
+  const linux = linuxCommand('HeartBeat', 'body')
+  check('linux uses notify-send', linux[0] === 'notify-send' && linux[2] === 'HeartBeat' && linux[3] === 'body')
 }
 
 group('tray menu')
