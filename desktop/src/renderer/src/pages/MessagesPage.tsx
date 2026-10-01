@@ -17,6 +17,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageScaffold } from '../components/PageScaffold'
+import { useHeaderActions } from '../shell/header'
 import { ReplyDialog } from '../components/ReplyDialog'
 import { SectionCard } from '../components/SectionCard'
 import { StateBlock } from '../components/StateBlock'
@@ -113,16 +114,18 @@ export function MessagesPage(): ReactNode {
     }
   }
 
+  const headerActions = useMemo(
+    () => (
+      <Typography variant="caption" sx={{ color: colorVar('on-surface-variant') }}>
+        {t('messages.polling')}
+      </Typography>
+    ),
+    [t]
+  )
+  useHeaderActions(headerActions)
+
   return (
-    <PageScaffold
-      page="messages"
-      title={t('nav.messages')}
-      actions={
-        <Typography variant="caption" sx={{ color: colorVar('on-surface-variant') }}>
-          {t('messages.polling')}
-        </Typography>
-      }
-    >
+    <PageScaffold fill>
       {error ? (
         <Typography variant="body2" sx={{ color: colorVar('error') }}>
           {error}
@@ -130,6 +133,7 @@ export function MessagesPage(): ReactNode {
       ) : null}
 
       <SectionCard
+        fill
         title={t('messages.list')}
         action={
           <Button variant="text" size="small" onClick={messages.reload}>

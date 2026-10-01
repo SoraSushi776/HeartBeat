@@ -12,8 +12,11 @@ import { useState } from 'react'
 
 import { LANGUAGES, useLanguage, useTranslate } from '../i18n'
 import { DESTINATIONS, type PageId } from '../navigation'
+import { useShell } from '../shell/store'
 import { SEED_PRESETS, colorVar, type SchemeVariant } from '../theme/material-you'
 import { useThemePreference, type ThemeMode } from '../theme/preferences'
+
+const TOP_BAR_HEIGHT = 84
 
 const MODES: { value: ThemeMode; key: 'appearance.mode.system' | 'appearance.mode.light' | 'appearance.mode.dark' }[] = [
   { value: 'system', key: 'appearance.mode.system' },
@@ -46,6 +49,7 @@ export function AppTopBar({ page, isMac }: AppTopBarProps): ReactNode {
   const setContrast = useThemePreference((state) => state.setContrast)
   const language = useLanguage((state) => state.language)
   const setLanguage = useLanguage((state) => state.setLanguage)
+  const actions = useShell((state) => state.actions)
   const [appearanceAnchor, setAppearanceAnchor] = useState<null | HTMLElement>(null)
   const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(null)
 
@@ -61,21 +65,29 @@ export function AppTopBar({ page, isMac }: AppTopBarProps): ReactNode {
     <Box
       className="app-drag-region"
       sx={{
-        height: 'var(--md-sys-top-bar-height)',
+        height: TOP_BAR_HEIGHT,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
-        gap: 1,
-        pl: isMac ? 10 : 2,
-        pr: 2,
+        gap: 2,
+        pl: isMac ? 10 : 3,
+        pr: 3,
         backgroundColor: colorVar('surface')
       }}
     >
-      <Typography variant="h5" sx={{ flexGrow: 1 }}>
-        {destination ? t(destination.labelKey) : t('app.name')}
-      </Typography>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography variant="h4" noWrap>
+          {destination ? t(destination.labelKey) : t('app.name')}
+        </Typography>
+        {destination ? (
+          <Typography variant="body2" sx={{ color: colorVar('on-surface-variant') }} noWrap>
+            {t(destination.descriptionKey)}
+          </Typography>
+        ) : null}
+      </Box>
 
-      <Box className="app-no-drag" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box className="app-no-drag" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        {actions}
         <Tooltip title={t('appearance.title')}>
           <IconButton
             onClick={(event) => setAppearanceAnchor(event.currentTarget)}

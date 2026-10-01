@@ -15,6 +15,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageScaffold } from '../components/PageScaffold'
+import { useHeaderActions } from '../shell/header'
 import { StateBlock } from '../components/StateBlock'
 import { useLanguage, useTranslate } from '../i18n'
 import { colorVar } from '../theme/material-you'
@@ -114,29 +115,31 @@ export function DiaryPage(): ReactNode {
     }
   }
 
+  const headerActions = useMemo(
+    () => (
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Button
+          variant="tonal"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setDraft(EMPTY_DRAFT)
+            setTab(0)
+          }}
+        >
+          {t('diary.new')}
+        </Button>
+        <Button variant="contained" onClick={() => void save()} disabled={busy}>
+          {t('common.save')}
+        </Button>
+      </Box>
+    ),
+    [busy, t]
+  )
+  useHeaderActions(headerActions)
+
   return (
-    <PageScaffold
-      page="diary"
-      title={t('nav.diary')}
-      actions={
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="tonal"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setDraft(EMPTY_DRAFT)
-              setTab(0)
-            }}
-          >
-            {t('diary.new')}
-          </Button>
-          <Button variant="contained" onClick={() => void save()} disabled={busy}>
-            {t('common.save')}
-          </Button>
-        </Box>
-      }
-    >
-      <Box sx={{ display: 'flex', gap: 2, minHeight: 420, flexGrow: 1 }}>
+    <PageScaffold fill>
+      <Box sx={{ display: 'flex', gap: 2, flexGrow: 1, minHeight: 0 }}>
         <Box
           sx={{
             width: 300,

@@ -171,7 +171,7 @@ export const STATE_TOKENS: Record<string, string> = {
 
 export const LAYOUT_TOKENS: Record<string, string> = {
   '--md-sys-navigation-rail-width': '88px',
-  '--md-sys-top-bar-height': '64px',
+  '--md-sys-top-bar-height': '84px',
   '--md-comp-filled-button-height': '40px',
   '--md-comp-icon-button-size': '40px',
   '--md-comp-list-item-height': '56px'

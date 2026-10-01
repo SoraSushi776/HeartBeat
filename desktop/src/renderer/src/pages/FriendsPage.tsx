@@ -16,6 +16,7 @@ import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
 
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageScaffold } from '../components/PageScaffold'
+import { useHeaderActions } from '../shell/header'
 import { StateBlock } from '../components/StateBlock'
 import { useTranslate } from '../i18n'
 import { colorVar } from '../theme/material-you'
@@ -107,22 +108,24 @@ export function FriendsPage(): ReactNode {
 
   const canSave = draft.name.trim().length > 0 && draft.url.trim().length > 0
 
+  const headerActions = useMemo(
+    () => (
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Button variant="tonal" startIcon={<AddIcon />} onClick={() => setDraft(EMPTY_DRAFT)}>
+          {t('friends.new')}
+        </Button>
+        <Button variant="contained" onClick={() => void save()} disabled={busy || !canSave}>
+          {t('common.save')}
+        </Button>
+      </Box>
+    ),
+    [busy, canSave, t]
+  )
+  useHeaderActions(headerActions)
+
   return (
-    <PageScaffold
-      page="friends"
-      title={t('nav.friends')}
-      actions={
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="tonal" startIcon={<AddIcon />} onClick={() => setDraft(EMPTY_DRAFT)}>
-            {t('friends.new')}
-          </Button>
-          <Button variant="contained" onClick={() => void save()} disabled={busy || !canSave}>
-            {t('common.save')}
-          </Button>
-        </Box>
-      }
-    >
-      <Box sx={{ display: 'flex', gap: 2, minHeight: 420, flexGrow: 1 }}>
+    <PageScaffold fill>
+      <Box sx={{ display: 'flex', gap: 2, flexGrow: 1, minHeight: 0 }}>
         <Box
           sx={{
             width: 320,

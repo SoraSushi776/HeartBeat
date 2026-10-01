@@ -305,29 +305,26 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
       MuiFormControlLabel: { styleOverrides: { label: { fontSize: 14 } } },
       MuiSwitch: {
         styleOverrides: {
-          root: { width: 52, height: 32, padding: 8 },
+          root: { width: 52, height: 32, padding: 0 },
           switchBase: {
-            padding: 7,
+            padding: 6,
+            color: outline,
             '&.Mui-checked': {
               transform: 'translateX(20px)',
               color: scheme.onPrimary,
-              '& + .MuiSwitch-track': { backgroundColor: scheme.primary, opacity: 1, border: 'none' },
-              '& .MuiSwitch-thumb': { width: 24, height: 24 }
+              '& + .MuiSwitch-track': {
+                backgroundColor: scheme.primary,
+                opacity: 1,
+                border: 'none'
+              }
             }
           },
-          thumb: {
-            width: 16,
-            height: 16,
-            boxShadow: 'none',
-            backgroundColor: outline,
-            transition: 'width 120ms ease, height 120ms ease'
-          },
+          thumb: { width: 20, height: 20, boxShadow: 'none' },
           track: {
             borderRadius: 999,
             backgroundColor: scheme.surfaceContainerHighest,
             border: `2px solid ${outline}`,
-            opacity: 1,
-            '.Mui-checked.Mui-checked + &': { backgroundColor: scheme.primary, border: 'none' }
+            opacity: 1
           }
         }
       },
