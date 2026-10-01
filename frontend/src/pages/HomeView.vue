@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import LiveStatus from "../components/LiveStatus.vue"
 import MediaCard from "../components/MediaCard.vue"
-import ProcessCloud from "../components/ProcessCloud.vue"
 import SnapshotLightbox from "../components/SnapshotLightbox.vue"
 </script>
 
@@ -10,7 +9,6 @@ import SnapshotLightbox from "../components/SnapshotLightbox.vue"
     <div class="tile"><LiveStatus /></div>
     <div class="tile"><MediaCard /></div>
     <div class="tile"><SnapshotLightbox /></div>
-    <div class="tile tile-wide"><ProcessCloud /></div>
   </div>
 </template>
 

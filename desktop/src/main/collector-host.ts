@@ -7,7 +7,6 @@ export function toPrivacyFlags(privacy: PrivacyConfig): PrivacyFlags {
   return {
     screenshot: privacy.collect_screenshot,
     media: privacy.collect_media,
-    processes: privacy.collect_processes,
     system: privacy.collect_system_load
   }
 }
@@ -80,8 +79,6 @@ export class CollectorHost {
       backoffSeconds: config.push.retry_backoff_seconds,
       privacy: toPrivacyFlags(config.privacy),
       collectors: {
-        processWhitelist: config.process_whitelist,
-        processCollectAll: config.process_collect_all,
         screenshot: {
           blurRadius: config.screenshot.blur_radius,
           scale: config.screenshot.scale,

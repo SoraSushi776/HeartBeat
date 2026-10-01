@@ -23,15 +23,9 @@ export interface MediaInfo {
   duration_ms?: number | null
 }
 
-export interface ProcessInfo {
-  name: string
-  count?: number
-}
-
 export interface PrivacyFlags {
   screenshot: boolean
   media: boolean
-  processes: boolean
   system: boolean
 }
 
@@ -48,7 +42,6 @@ export interface StatusData {
   client: ClientInfo
   system?: SystemInfo | null
   media?: MediaInfo | null
-  processes?: ProcessInfo[]
   screenshot?: ScreenshotInfo | null
   privacy?: PrivacyFlags
 }
@@ -127,7 +120,6 @@ export interface SnapshotEvent {
 export interface SiteInfo {
   title: string
   tagline: string
-  process_title: string
   show_heatmap: boolean
   tags_title: string
   tags: string[]

@@ -3,7 +3,6 @@ import type {
   FriendLink,
   GithubData,
   Message,
-  ProcessInfo,
   SiteInfo,
   StatusData,
 } from "../types/protocol"
@@ -27,14 +26,6 @@ function contributionDays(): { date: string; count: number; level: number }[] {
 
 export function demoStatus(): StatusData {
   const now = Date.now()
-  const processes: ProcessInfo[] = [
-    { name: "Code", count: 3 },
-    { name: "Safari", count: 1 },
-    { name: "Music", count: 1 },
-    { name: "WeChat", count: 2 },
-    { name: "Terminal", count: 1 },
-    { name: "Notes", count: 1 },
-  ]
   return {
     online: true,
     last_heartbeat_ts: now - 8_000,
@@ -54,12 +45,10 @@ export function demoStatus(): StatusData {
       position_ms: 82_000,
       duration_ms: 244_000,
     },
-    processes,
     screenshot: null,
     privacy: {
       screenshot: true,
       media: true,
-      processes: true,
       system: true,
     },
   }
@@ -176,7 +165,6 @@ export function demoSite(): SiteInfo {
   return {
     title: "HeartBeat",
     tagline: "个人主页与实时状态",
-    process_title: "TA的电脑上正在玩",
     show_heatmap: true,
     tags_title: "标签",
     tags: ["音乐", "旅行", "摄影", "独立游戏"],

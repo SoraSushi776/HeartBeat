@@ -96,7 +96,7 @@ export function registerIpc(context: IpcContext): void {
   ipcMain.handle(IPC.diagnosticsSnapshot, async (): Promise<SnapshotView> => {
     const collector = host.collectorInstance
     if (!collector) {
-      return { media: null, coverDataUrl: null, processes: [], system: null, collectedAt: Date.now() }
+      return { media: null, coverDataUrl: null, system: null, collectedAt: Date.now() }
     }
     return toSnapshotView(await collector.collectDiagnostics())
   })
@@ -179,7 +179,6 @@ function toSnapshotView(snapshot: DiagnosticsSnapshot): SnapshotView {
     coverDataUrl: snapshot.coverBytes
       ? `data:image/jpeg;base64,${snapshot.coverBytes.toString('base64')}`
       : null,
-    processes: snapshot.processes,
     system: snapshot.system,
     collectedAt: snapshot.collectedAt
   }

@@ -1,11 +1,9 @@
-import type { MediaInfo, Platform, ProcessInfo, ScreenshotResult, SystemInfo } from '../protocol'
+import type { MediaInfo, Platform, ScreenshotResult, SystemInfo } from '../protocol'
 import { currentPlatform } from './platform'
 import type { PrivacyGate } from './privacy'
 import { LinuxMediaAdapter } from './media/linux'
 import { MacosMediaAdapter } from './media/macos'
 import { WindowsMediaAdapter } from './media/windows'
-import { ProcessFilter } from './processes/filter'
-import { SystemInformationProcessAdapter } from './processes/index'
 import { ScreenshotAdapter, type ScreenshotEncodeOptions } from './screenshot/adapter'
 import { SystemLoadAdapter } from './system/index'
 
@@ -14,8 +12,6 @@ export interface MediaAdapter {
 }
 
 export interface CollectorConfig {
-  processWhitelist: string[]
-  processCollectAll: boolean
   screenshot: ScreenshotEncodeOptions
 }
 
@@ -34,7 +30,6 @@ export function createMediaAdapter(platform: Platform = currentPlatform()): Medi
 export interface CollectorBundle {
   collectScreenshot: (gate: PrivacyGate) => Promise<ScreenshotResult | null>
   collectMedia: (gate: PrivacyGate) => Promise<MediaInfo | null>
-  collectProcesses: (gate: PrivacyGate) => Promise<ProcessInfo[]>
   collectSystem: (gate: PrivacyGate) => Promise<SystemInfo | null>
   update: (config: CollectorConfig) => void
 }
@@ -42,19 +37,16 @@ export interface CollectorBundle {
 export class CollectorRegistry implements CollectorBundle {
   readonly screenshot: ScreenshotAdapter
   readonly media: MediaAdapter
-  readonly processes: SystemInformationProcessAdapter
   readonly system: SystemLoadAdapter
 
   constructor(config: CollectorConfig) {
     this.screenshot = new ScreenshotAdapter(config.screenshot)
     this.media = createMediaAdapter()
-    this.processes = new SystemInformationProcessAdapter(buildFilter(config))
     this.system = new SystemLoadAdapter()
   }
 
   update(config: CollectorConfig): void {
     this.screenshot.updateOptions(config.screenshot)
-    this.processes.updateFilter(buildFilter(config))
   }
 
   async collectScreenshot(gate: PrivacyGate): Promise<ScreenshotResult | null> {
@@ -65,17 +57,9 @@ export class CollectorRegistry implements CollectorBundle {
     return this.media.collect(gate)
   }
 
-  async collectProcesses(gate: PrivacyGate): Promise<ProcessInfo[]> {
-    return (await this.processes.collect(gate)) ?? []
-  }
-
   async collectSystem(gate: PrivacyGate): Promise<SystemInfo | null> {
     return this.system.collect(gate)
   }
-}
-
-function buildFilter(config: CollectorConfig): ProcessFilter {
-  return new ProcessFilter(config.processWhitelist, undefined, config.processCollectAll)
 }
 
 export * from './privacy'

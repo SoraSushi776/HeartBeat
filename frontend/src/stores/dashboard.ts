@@ -48,7 +48,6 @@ export class DashboardStore {
   readonly site = shallowRef<SiteInfo>({
     title: "HeartBeat",
     tagline: "个人主页与实时状态",
-    process_title: "TA的电脑上正在玩",
     show_heatmap: true,
     tags_title: "标签",
     tags: [],
@@ -90,7 +89,6 @@ export class DashboardStore {
       this.site.value = {
         title: data.title || "HeartBeat",
         tagline: data.tagline || "个人主页与实时状态",
-        process_title: data.process_title || "TA的电脑上正在玩",
         show_heatmap: data.show_heatmap !== false,
         tags_title: data.tags_title || "标签",
         tags: data.tags ?? [],

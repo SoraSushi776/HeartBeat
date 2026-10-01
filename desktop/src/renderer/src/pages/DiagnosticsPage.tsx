@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
@@ -12,6 +12,7 @@ import GraphicEqOutlinedIcon from '@mui/icons-material/GraphicEqOutlined'
 import MusicOffOutlinedIcon from '@mui/icons-material/MusicOffOutlined'
 
 import { PageScaffold } from '../components/PageScaffold'
+import { useHeaderActions } from '../shell/header'
 import { SectionCard } from '../components/SectionCard'
 import { StateBlock } from '../components/StateBlock'
 import { useLanguage, useTranslate } from '../i18n'
@@ -74,20 +75,21 @@ export function DiagnosticsPage(): ReactNode {
 
   useInterval(() => setNonce((value) => value + 1), REFRESH_MS)
 
+  const headerActions = useMemo(
+    () => (
+      <Typography variant="caption" sx={{ color: colorVar('on-surface-variant') }}>
+        {t('diagnostics.auto_refresh')}
+      </Typography>
+    ),
+    [t]
+  )
+  useHeaderActions(headerActions)
+
   const media = snapshot?.media ?? null
   const system = snapshot?.system ?? null
-  const processes = snapshot?.processes ?? []
 
   return (
-    <PageScaffold
-      page="diagnostics"
-      title={t('nav.diagnostics')}
-      actions={
-        <Typography variant="caption" sx={{ color: colorVar('on-surface-variant') }}>
-          {t('diagnostics.auto_refresh')}
-        </Typography>
-      }
-    >
+    <PageScaffold>
       <StateBlock loading={loading} error={error} onRetry={() => setNonce((value) => value + 1)}>
         <SectionCard title={t('diagnostics.media')}>
           {media && media.state !== 'idle' ? (
@@ -167,20 +169,6 @@ export function DiagnosticsPage(): ReactNode {
               </Typography>
             </Box>
           </Box>
-        </SectionCard>
-
-        <SectionCard title={t('diagnostics.processes')}>
-          {processes.length === 0 ? (
-            <Typography variant="body2" sx={{ color: colorVar('on-surface-variant') }}>
-              {t('diagnostics.processes_empty')}
-            </Typography>
-          ) : (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-              {processes.map((item) => (
-                <Chip key={item.name} label={`${item.name}${item.count > 1 ? ` ×${item.count}` : ''}`} />
-              ))}
-            </Box>
-          )}
         </SectionCard>
 
         <SectionCard title={t('diagnostics.history')}>

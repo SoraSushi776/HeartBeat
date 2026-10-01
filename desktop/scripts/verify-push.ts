@@ -101,8 +101,6 @@ const SHOT_SOURCE = await syntheticPng(800, 600)
 const SHOT_WEBP = await sharp(SHOT_SOURCE).webp({ quality: 75 }).toBuffer()
 
 const config: CollectorConfig = {
-  processWhitelist: [],
-  processCollectAll: false,
   screenshot: { blurRadius: 10, scale: 0.5, quality: 75 }
 }
 
@@ -123,7 +121,6 @@ const flags: PrivacyFlags = { ...emptyFlags() }
 const stub: CollectorBundle = {
   collectScreenshot: async () => ({ webp: SHOT_WEBP, width: 400, height: 300 }),
   collectMedia: async () => stubMedia,
-  collectProcesses: async () => [{ name: 'Code', count: 2 }],
   collectSystem: async () => ({ cpu_percent: 12.5, memory_percent: 66, load_avg: [1, 2, 3] }),
   update: () => undefined
 }
@@ -132,7 +129,7 @@ const api = new HeartbeatApi({
   baseUrl: `http://127.0.0.1:${server.port}`,
   apiKey: 'test-key',
   timeoutSeconds: 5,
-  clientVersion: '0.2.0',
+  clientVersion: '1.0.0',
   clientId: 'testclient01'
 })
 
@@ -140,7 +137,7 @@ const collector = new HeartbeatCollector(
   api,
   {
     clientId: 'testclient01',
-    clientVersion: '0.2.0',
+    clientVersion: '1.0.0',
     pushEnabled: true,
     intervalSeconds: 30,
     backoffSeconds: [0, 5, 15, 60, 300],
@@ -157,11 +154,10 @@ check('tick reports success', record.ok, record.detail)
 check('server received one heartbeat', captured.heartbeats.length === 1)
 const sent = captured.heartbeats[0]
 check('sends the api key header', sent?.headers['x-api-key'] === 'test-key')
-check('sends the client version header', sent?.headers['x-client-version'] === '0.2.0')
+check('sends the client version header', sent?.headers['x-client-version'] === '1.0.0')
 check('payload carries a timestamp', typeof sent?.payload.ts === 'number' && sent.payload.ts > 0)
 check('payload carries client info', sent?.payload.client.id === 'testclient01' && sent?.payload.client.platform === 'macos')
 check('payload carries privacy flags', JSON.stringify(sent?.payload.privacy) === JSON.stringify(flags))
-check('payload carries processes', sent?.payload.processes[0]?.name === 'Code' && sent?.payload.processes[0]?.count === 2)
 check('payload carries system load', sent?.payload.system?.memory_percent === 66)
 check('media is serialized', sent?.payload.media?.title === 'Mock Song' && sent?.payload.media?.state === 'playing')
 check('media carries no raw cover bytes', !JSON.stringify(sent?.payload).includes('cover_bytes'))

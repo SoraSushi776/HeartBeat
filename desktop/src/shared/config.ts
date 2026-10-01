@@ -15,7 +15,6 @@ export interface PushConfig {
 export interface PrivacyConfig {
   collect_screenshot: boolean
   collect_media: boolean
-  collect_processes: boolean
   collect_system_load: boolean
 }
 
@@ -37,7 +36,6 @@ export interface UiConfig {
 export interface SiteConfig {
   title: string
   tagline: string
-  process_title: string
   show_heatmap: boolean
   tags_title: string
   tags: string[]
@@ -55,8 +53,6 @@ export interface AppConfig {
   push: PushConfig
   privacy: PrivacyConfig
   screenshot: ScreenshotConfig
-  process_whitelist: string[]
-  process_collect_all: boolean
   autostart: AutostartConfig
   ui: UiConfig
   site: SiteConfig

@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography'
 
 import { FieldRow } from '../components/FieldRow'
 import { PageScaffold } from '../components/PageScaffold'
+import { useHeaderActions } from '../shell/header'
 import { SectionCard } from '../components/SectionCard'
 import { SliderField, SwitchField } from '../components/SliderField'
 import { StateBlock } from '../components/StateBlock'
@@ -81,6 +82,26 @@ export function SettingsPage(): ReactNode {
     }
   }
 
+  const headerActions = useMemo(
+    () => (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        {dirty ? (
+          <Typography variant="caption" sx={{ color: colorVar('tertiary') }}>
+            {t('settings.dirty')}
+          </Typography>
+        ) : null}
+        <Button variant="text" onClick={() => void uploadBackground()} disabled={busy}>
+          {t('settings.upload_background')}
+        </Button>
+        <Button variant="contained" onClick={() => void save()} disabled={busy || !dirty}>
+          {t('common.save')}
+        </Button>
+      </Box>
+    ),
+    [busy, dirty, t]
+  )
+  useHeaderActions(headerActions)
+
   const uploadBackground = async (): Promise<void> => {
     setBusy(true)
     try {
@@ -97,29 +118,11 @@ export function SettingsPage(): ReactNode {
   }
 
   return (
-    <PageScaffold
-      page="settings"
-      title={t('nav.settings')}
-      actions={
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          {dirty ? (
-            <Typography variant="caption" sx={{ color: colorVar('tertiary') }}>
-              {t('settings.dirty')}
-            </Typography>
-          ) : null}
-          <Button variant="text" onClick={() => void uploadBackground()} disabled={busy}>
-            {t('settings.upload_background')}
-          </Button>
-          <Button variant="contained" onClick={() => void save()} disabled={busy || !dirty}>
-            {t('common.save')}
-          </Button>
-        </Box>
-      }
-    >
+    <PageScaffold>
       <StateBlock loading={loaded.loading} error={loaded.error} onRetry={loaded.reload}>
         {draft ? (
           <>
-            <SectionCard title={t('settings.section.server')}>
+            <SectionCard collapsible title={t('settings.section.server')}>
               <FieldRow
                 label={t('settings.base_url')}
                 control={
@@ -197,7 +200,7 @@ export function SettingsPage(): ReactNode {
               />
             </SectionCard>
 
-            <SectionCard title={t('settings.section.push')} hint={t('settings.push_hint')}>
+            <SectionCard collapsible title={t('settings.section.push')} hint={t('settings.push_hint')}>
               <FieldRow
                 label={t('settings.push_enabled')}
                 control={
@@ -231,12 +234,11 @@ export function SettingsPage(): ReactNode {
               />
             </SectionCard>
 
-            <SectionCard title={t('settings.section.privacy')} hint={t('settings.privacy_hint')}>
+            <SectionCard collapsible title={t('settings.section.privacy')} hint={t('settings.privacy_hint')}>
               {(
                 [
                   ['collect_screenshot', 'settings.collect_screenshot'],
                   ['collect_media', 'settings.collect_media'],
-                  ['collect_processes', 'settings.collect_processes'],
                   ['collect_system_load', 'settings.collect_system_load']
                 ] as const
               ).map(([key, labelKey]) => (
@@ -257,7 +259,7 @@ export function SettingsPage(): ReactNode {
               ))}
             </SectionCard>
 
-            <SectionCard title={t('settings.section.screenshot')} hint={t('settings.screenshot_hint')}>
+            <SectionCard collapsible title={t('settings.section.screenshot')} hint={t('settings.screenshot_hint')}>
               <FieldRow
                 label={t('settings.blur')}
                 control={
@@ -308,42 +310,11 @@ export function SettingsPage(): ReactNode {
               />
             </SectionCard>
 
-            <SectionCard title={t('settings.section.processes')} hint={t('settings.whitelist_hint')}>
-              <FieldRow
-                label={t('settings.collect_all')}
-                control={
-                  <SwitchField
-                    checked={draft.config.process_collect_all}
-                    onChange={(value) =>
-                      patchConfig((config) => {
-                        config.process_collect_all = value
-                      })
-                    }
-                  />
-                }
-              />
-              <FieldRow
-                label={t('settings.whitelist')}
-                control={
-                  <TokenField
-                    values={draft.config.process_whitelist}
-                    placeholder={t('settings.whitelist_add')}
-                    onChange={(values) =>
-                      patchConfig((config) => {
-                        config.process_whitelist = values
-                      })
-                    }
-                  />
-                }
-              />
-            </SectionCard>
-
-            <SectionCard title={t('settings.section.site')}>
+            <SectionCard collapsible title={t('settings.section.site')}>
               {(
                 [
                   ['title', 'settings.site_title'],
                   ['tagline', 'settings.site_tagline'],
-                  ['process_title', 'settings.site_process_title'],
                   ['tags_title', 'settings.site_tags_title'],
                   ['icp_text', 'settings.site_icp_text'],
                   ['icp_keyword', 'settings.site_icp_keyword'],
@@ -409,7 +380,7 @@ export function SettingsPage(): ReactNode {
               />
             </SectionCard>
 
-            <SectionCard title={t('settings.section.general')}>
+            <SectionCard collapsible title={t('settings.section.general')}>
               <FieldRow
                 label={t('settings.autostart')}
                 hint={bridge.app.platform === 'darwin' ? t('settings.autostart_dev') : undefined}
@@ -462,7 +433,7 @@ export function SettingsPage(): ReactNode {
               />
             </SectionCard>
 
-            <SectionCard title={t('settings.section.about')}>
+            <SectionCard collapsible title={t('settings.section.about')}>
               <FieldRow
                 label={t('settings.version')}
                 control={

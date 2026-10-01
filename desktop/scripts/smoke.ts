@@ -19,7 +19,6 @@ import { APP_SCRIPTS, installedAppScripts, parseScriptOutput } from '../src/main
 import { parseNowPlayingJson } from '../src/main/adapters/media/nowplaying'
 import { preferPlaying } from '../src/main/adapters/media/selection'
 import { encodePowerShell, friendlyAppName, parseSessions } from '../src/main/adapters/media/windows'
-import { ProcessFilter, aggregate, aggregateKey, candidateNames } from '../src/main/adapters/processes/filter'
 import { PrivacyGate } from '../src/main/adapters/privacy'
 import { encodeScreenshot } from '../src/main/adapters/screenshot/index'
 import { cpuPercent, loadAverage, memoryPercent } from '../src/main/adapters/system/index'
@@ -59,7 +58,6 @@ group('config / defaults')
   check('setup_completed defaults false', config.setup_completed === false)
   check('interval defaults 60', config.push.interval_seconds === 60)
   check('backoff table defaults', config.push.retry_backoff_seconds.join(',') === DEFAULT_BACKOFF_SECONDS.join(','))
-  check('process_collect_all defaults true', config.process_collect_all === true)
   check('ui.language defaults zh-CN', config.ui.language === 'zh-CN')
   check('site title defaults', config.site.title === DEFAULT_SITE.title)
   check('site tags defaults empty', config.site.tags.length === 0)
@@ -72,7 +70,6 @@ group('config / bad data falls back')
     push: { enabled: 'yes', interval_seconds: 'abc', retry_backoff_seconds: 'nope' },
     privacy: { collect_media: 'true' },
     screenshot: { blur_radius: null },
-    process_whitelist: [1, 'Safari', null, 'Code'],
     ui: { language: 'fr-FR' },
     site: { tags: ['a', 3, 'b'], show_heatmap: 'true' }
   })
@@ -82,7 +79,6 @@ group('config / bad data falls back')
   check('backoff falls back to table', config.push.retry_backoff_seconds.join(',') === DEFAULT_BACKOFF_SECONDS.join(','))
   check('privacy.media falls back true', config.privacy.collect_media === true)
   check('blur falls back 10', config.screenshot.blur_radius === DEFAULT_SCREENSHOT.blur_radius)
-  check('whitelist keeps strings only', config.process_whitelist.join(',') === 'Safari,Code')
   check('unknown language falls back', config.ui.language === 'zh-CN')
   check('site tags keep strings only', config.site.tags.join(',') === 'a,b')
   check('show_heatmap falls back true', config.site.show_heatmap === true)
@@ -225,57 +221,16 @@ group('tray menu')
 
 group('privacy gate')
 {
-  const gate = new PrivacyGate({ screenshot: true, media: false, processes: true, system: false })
+  const gate = new PrivacyGate({ screenshot: true, media: false, system: false })
   check('allows enabled capability', gate.allow('screenshot'))
   check('blocks disabled capability', !gate.allow('media'))
   check('blocks disabled system capability', !gate.allow('system'))
   const seen: string[] = []
   gate.subscribe((flags) => seen.push(JSON.stringify(flags)))
-  gate.update({ screenshot: false, media: false, processes: false, system: false })
+  gate.update({ screenshot: false, media: false, system: false })
   check('notifies subscribers', seen.length === 1 && seen[0].includes('"screenshot":false'))
   check('flags snapshot reflects update', gate.flags.media === false)
   check('snapshot is a copy', gate.flags !== gate.flags)
-}
-
-group('process filter')
-{
-  const whitelist = new ProcessFilter(['Code', 'Safari'])
-  check('matches a whitelisted name', whitelist.matches({ name: 'Code' }))
-  check('rejects a non-whitelisted name', !whitelist.matches({ name: 'Finder' }))
-  check('full match semantics', !whitelist.matches({ name: 'Code2' }))
-  check('exclude beats whitelist', !whitelist.matches({ name: 'Code Helper' }))
-
-  const collectAll = new ProcessFilter([], undefined, true)
-  check('enabled with collect all', collectAll.enabled)
-  check('accepts an installed app', collectAll.matches({ name: 'Safari', exe: '/Applications/Safari.app/Contents/MacOS/Safari' }))
-  check('rejects a system binary', !collectAll.matches({ name: 'foo', exe: '/usr/libexec/foo' }))
-  check('rejects apple daemons', !collectAll.matches({ name: 'com.apple.WebKit' }))
-  check('rejects kernel task', !collectAll.matches({ name: 'kernel_task' }))
-  check('accepts a bare user-style name', collectAll.matches({ name: 'Obsidian' }))
-  check('rejects a lowercase bare name', !collectAll.matches({ name: 'obsidian' }))
-
-  const disabled = new ProcessFilter([])
-  check('disabled without whitelist', !disabled.enabled)
-  check('never matches when disabled', !disabled.matches({ name: 'Safari' }))
-
-  check(
-    'candidate names dedupe identical basenames',
-    candidateNames({
-      name: 'Code',
-      exe: '/Applications/Code.app/Contents/MacOS/Code',
-      cmdline0: '/Applications/Code.app/Contents/MacOS/Code'
-    }).join(',') === 'Code'
-  )
-  check(
-    'candidate names keep distinct basenames',
-    candidateNames({ name: 'node', exe: '/opt/homebrew/bin/node', cmdline0: '/usr/local/bin/tsx' }).join(',') === 'node,tsx'
-  )
-  check('aggregate key prefers exe basename', aggregateKey({ name: 'Electron', exe: '/opt/homebrew/bin/Code' }) === 'Code')
-  check('aggregate key falls back to name', aggregateKey({ name: 'Electron' }) === 'Electron')
-
-  const aggregated = aggregate(['Safari', 'Code', 'Safari'])
-  check('aggregate counts duplicates', aggregated.some((item) => item.name === 'Safari' && item.count === 2))
-  check('aggregate sorts by name', aggregated.map((item) => item.name).join(',') === 'Code,Safari')
 }
 
 group('media selection and clock')
@@ -438,7 +393,7 @@ if (process.argv.includes('--live')) {
     check('setup_completed', live.setup_completed)
     check('base_url', live.server.base_url.length > 0, live.server.base_url)
     check('interval in range', live.push.interval_seconds >= 5 && live.push.interval_seconds <= 3600, String(live.push.interval_seconds))
-    process.stdout.write(`  info whitelist=${live.process_whitelist.length} collect_all=${live.process_collect_all} language=${live.ui.language}\n`)
+    process.stdout.write(`  info language=${live.ui.language}\n`)
   }
   check('client.secrets.json exists', existsSync(secretsFile), secretsFile)
   const secrets = secretsSchema.parse(readJsonFile(secretsFile))
@@ -453,7 +408,7 @@ if (process.argv.includes('--live')) {
       baseUrl: live.server.base_url,
       apiKey: secrets.api_key,
       timeoutSeconds: live.server.timeout_seconds,
-      clientVersion: '0.2.0',
+      clientVersion: '1.0.0',
       clientId: live.client_id
     })
     try {
@@ -492,16 +447,14 @@ if (process.argv.includes('--live')) {
     }
   }
   const registry = new CollectorRegistry({
-    processWhitelist: live.process_whitelist,
-    processCollectAll: live.process_collect_all,
     screenshot: {
       blurRadius: live.screenshot.blur_radius,
       scale: live.screenshot.scale,
       quality: live.screenshot.quality
     }
   })
-  const openGate = new PrivacyGate({ screenshot: true, media: true, processes: true, system: true })
-  const shutGate = new PrivacyGate({ screenshot: false, media: false, processes: false, system: false })
+  const openGate = new PrivacyGate({ screenshot: true, media: true, system: true })
+  const shutGate = new PrivacyGate({ screenshot: false, media: false, system: false })
 
   const shot = await registry.collectScreenshot(openGate)
   check('screenshot captured and encoded', shot !== null, shot ? `${shot.width}x${shot.height} ${shot.webp.length}B` : 'capture unavailable')
@@ -511,11 +464,6 @@ if (process.argv.includes('--live')) {
   process.stdout.write(`  info media state=${media?.state} title=${media?.title ?? '-'} app=${media?.app ?? '-'} pos=${media?.position_ms ?? '-'}/${media?.duration_ms ?? '-'} cover=${media?.cover_bytes ? `${media.cover_bytes.length}B` : media?.cover_url ?? '-'}\n`)
   check('media collection returns a value', media !== null)
   check('media blocked by privacy gate', (await registry.collectMedia(shutGate)) === null)
-
-  const processes = await registry.collectProcesses(openGate)
-  process.stdout.write(`  info processes=${processes.length} sample=${processes.slice(0, 5).map((item) => `${item.name}x${item.count}`).join(' ')}\n`)
-  check('process collection returns a list', Array.isArray(processes))
-  check('process collection respects the gate', (await registry.collectProcesses(shutGate)).length === 0)
 
   const system = await registry.collectSystem(openGate)
   process.stdout.write(`  info system cpu=${system?.cpu_percent} mem=${system?.memory_percent} load=${JSON.stringify(system?.load_avg)}\n`)

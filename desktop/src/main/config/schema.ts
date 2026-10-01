@@ -24,7 +24,6 @@ export const DEFAULT_PUSH = {
 export const DEFAULT_PRIVACY = {
   collect_screenshot: true,
   collect_media: true,
-  collect_processes: true,
   collect_system_load: true
 }
 
@@ -48,7 +47,6 @@ export const DEFAULT_UI: { start_minimized: boolean; language: Language } = {
 export const DEFAULT_SITE = {
   title: 'HeartBeat',
   tagline: '个人主页与实时状态',
-  process_title: 'TA的电脑上正在玩',
   show_heatmap: true,
   tags_title: '标签',
   tags: [] as string[],
@@ -124,7 +122,6 @@ export const privacySchema = z
   .object({
     collect_screenshot: flag(DEFAULT_PRIVACY.collect_screenshot),
     collect_media: flag(DEFAULT_PRIVACY.collect_media),
-    collect_processes: flag(DEFAULT_PRIVACY.collect_processes),
     collect_system_load: flag(DEFAULT_PRIVACY.collect_system_load)
   })
   .catch(DEFAULT_PRIVACY)
@@ -154,7 +151,6 @@ export const siteSchema = z
   .object({
     title: text(DEFAULT_SITE.title),
     tagline: text(DEFAULT_SITE.tagline),
-    process_title: text(DEFAULT_SITE.process_title),
     show_heatmap: flag(DEFAULT_SITE.show_heatmap),
     tags_title: text(DEFAULT_SITE.tags_title),
     tags: stringList(),
@@ -173,8 +169,6 @@ export const appConfigSchema = z.object({
   push: pushSchema.default(DEFAULT_PUSH),
   privacy: privacySchema.default(DEFAULT_PRIVACY),
   screenshot: screenshotSchema.default(DEFAULT_SCREENSHOT),
-  process_whitelist: stringList(),
-  process_collect_all: flag(true),
   autostart: autostartSchema.default(DEFAULT_AUTOSTART),
   ui: uiSchema.default(DEFAULT_UI),
   site: siteSchema.default(DEFAULT_SITE)

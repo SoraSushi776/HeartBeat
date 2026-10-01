@@ -1,6 +1,6 @@
 export type Platform = 'windows' | 'macos' | 'linux'
 export type MediaState = 'playing' | 'paused' | 'idle'
-export type Capability = 'screenshot' | 'media' | 'processes' | 'system'
+export type Capability = 'screenshot' | 'media' | 'system'
 
 export interface ClientInfo {
   id: string
@@ -26,15 +26,9 @@ export interface MediaInfo {
   duration_ms: number | null
 }
 
-export interface ProcessInfo {
-  name: string
-  count: number
-}
-
 export interface PrivacyFlags {
   screenshot: boolean
   media: boolean
-  processes: boolean
   system: boolean
 }
 
@@ -59,7 +53,6 @@ export interface HeartbeatPayload {
   ts: number
   client: ClientInfo
   privacy: PrivacyFlags
-  processes: ProcessInfo[]
   system: SystemInfo | null
   media: WireMedia | null
 }
@@ -102,12 +95,11 @@ export function toWireMedia(media: MediaInfo | null): WireMedia | null {
 }
 
 export function emptyFlags(): PrivacyFlags {
-  return { screenshot: true, media: true, processes: true, system: true }
+  return { screenshot: true, media: true, system: true }
 }
 
 export const CAPABILITY_BY_FLAG: Record<Capability, keyof PrivacyFlags> = {
   screenshot: 'screenshot',
   media: 'media',
-  processes: 'processes',
   system: 'system'
 }

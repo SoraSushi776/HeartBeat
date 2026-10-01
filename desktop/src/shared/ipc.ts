@@ -79,7 +79,6 @@ export interface SystemView {
 export interface SnapshotView {
   media: MediaView | null
   coverDataUrl: string | null
-  processes: Array<{ name: string; count: number }>
   system: SystemView | null
   collectedAt: number
 }

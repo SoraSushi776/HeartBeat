@@ -10,7 +10,6 @@ import {
   type MediaInfo,
   type Platform,
   type PrivacyFlags,
-  type ProcessInfo,
   type ScreenshotResult,
   type SystemInfo
 } from './protocol'
@@ -23,7 +22,6 @@ export interface PushRecord {
 
 export interface DiagnosticsSnapshot {
   media: MediaInfo | null
-  processes: ProcessInfo[]
   system: SystemInfo | null
   coverBytes: Buffer | null
   collectedAt: number
@@ -116,7 +114,6 @@ export class HeartbeatCollector {
     const coverBytes = media?.cover_bytes ?? null
     return {
       media,
-      processes: await this.registry.collectProcesses(this.gate),
       system: await this.registry.collectSystem(this.gate),
       coverBytes,
       collectedAt: Date.now()
@@ -204,7 +201,6 @@ export class HeartbeatCollector {
         version: this.config.clientVersion
       },
       privacy: this.gate.flags,
-      processes: await this.registry.collectProcesses(this.gate),
       system: await this.registry.collectSystem(this.gate),
       media: toWireMedia(mediaForWire)
     }
