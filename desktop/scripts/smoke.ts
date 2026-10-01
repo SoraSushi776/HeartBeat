@@ -1,5 +1,9 @@
 import { existsSync } from 'node:fs'
 
+import { buildDesktopEntry, commandLine as linuxCommandLine, desktopEntryPath } from '../src/main/app/autostart/linux'
+import { buildPlist, launchctlArgs, plistPath } from '../src/main/app/autostart/macos'
+import { RUN_KEY, registryAddArgs, registryDeleteArgs, registryQueryArgs } from '../src/main/app/autostart/windows'
+import { buildTrayMenuTemplate } from '../src/main/app/tray-menu'
 import { configPath, secretsPath } from '../src/main/config/paths'
 import { readJsonFile } from '../src/main/config/read'
 import {
@@ -97,6 +101,58 @@ group('secrets')
   const partial = secretsSchema.parse({ api_key: 'k', github_login: 42 })
   check('api_key kept', partial.api_key === 'k')
   check('github_login falls back empty', partial.github_login === '')
+}
+
+group('autostart / macOS launch agent')
+{
+  const target = { command: '/Applications/HeartBeat.app/Contents/MacOS/HeartBeat' }
+  const plist = buildPlist(target)
+  check('declares label', plist.includes('<key>Label</key>'))
+  check('label matches the launch agent id', plist.includes('<string>com.heartbeat.client</string>'))
+  check('registers the product path', plist.includes('<string>/Applications/HeartBeat.app/Contents/MacOS/HeartBeat</string>'))
+  check('runs at load', plist.includes('<key>RunAtLoad</key>'))
+  check('is a valid plist root', plist.startsWith('<?xml') && plist.trimEnd().endsWith('</plist>'))
+  check('escapes xml entities', buildPlist({ command: '/tmp/a&b' }).includes('/tmp/a&amp;b'))
+  check('adds extra arguments', buildPlist({ command: '/app', arguments: ['/repo'] }).includes('<string>/repo</string>'))
+  check('plist lives under LaunchAgents', plistPath().endsWith('Library/LaunchAgents/com.heartbeat.client.plist'), plistPath())
+  const args = launchctlArgs('bootstrap', '/tmp/x.plist')
+  check('launchctl targets the gui domain', args[1].startsWith('gui/'), args[1])
+}
+
+group('autostart / Linux desktop entry')
+{
+  const entry = buildDesktopEntry({ command: '/opt/heartbeat/heartbeat-desktop' })
+  check('is a desktop entry', entry.startsWith('[Desktop Entry]'))
+  check('has exec line', entry.includes('Exec=/opt/heartbeat/heartbeat-desktop'))
+  check('starts enabled', entry.includes('Hidden=false'))
+  check('joins extra arguments', linuxCommandLine({ command: '/app', arguments: ['/repo'] }) === '/app /repo')
+  check('entry lives in autostart dir', desktopEntryPath().includes('autostart/heartbeat-client.desktop'), desktopEntryPath())
+}
+
+group('autostart / Windows run key')
+{
+  const add = registryAddArgs({ command: 'C:\\Program Files\\HeartBeat\\HeartBeat.exe' })
+  check('targets the Run key', add[1] === RUN_KEY)
+  check('uses the HeartBeat value name', add[add.indexOf('/v') + 1] === 'HeartBeat')
+  check('quotes paths with spaces', add[add.indexOf('/d') + 1] === '"C:\\Program Files\\HeartBeat\\HeartBeat.exe"', add[add.indexOf('/d') + 1])
+  check('registryAddArgs.join', add.join(' ').includes('/t REG_SZ'))
+  check('delete args remove the value', registryDeleteArgs().join(' ').includes('/v HeartBeat /f'))
+  check('query args read the value', registryQueryArgs()[0] === 'query')
+}
+
+group('tray menu')
+{
+  const clicks: string[] = []
+  const template = buildTrayMenuTemplate(
+    { open: '打开设置', quit: '退出', status: '推送已开启' },
+    { onOpen: () => clicks.push('open'), onQuit: () => clicks.push('quit') }
+  )
+  check('has a status row', template[0]?.label === '推送已开启' && template[0]?.enabled === false)
+  check('separates sections', template.filter((item) => item.type === 'separator').length === 2)
+  check('labels open and quit', template.some((item) => item.label === '打开设置') && template.some((item) => item.label === '退出'))
+  template.find((item) => item.label === '打开设置')?.click?.({} as never, {} as never, {} as never)
+  template.find((item) => item.label === '退出')?.click?.({} as never, {} as never, {} as never)
+  check('click handlers wired', clicks.join(',') === 'open,quit', clicks.join(','))
 }
 
 if (process.argv.includes('--live')) {

@@ -1,66 +1,90 @@
-import { app, BrowserWindow, shell } from 'electron'
-import { join } from 'node:path'
+import { app, BrowserWindow } from 'electron'
+import { existsSync } from 'node:fs'
 
+import { appConfigStore, configPath, platformKey, secretStore, type Language } from './config'
 import { logger } from './logger'
+import { translator } from './i18n'
+import { createAutostartProvider, syncAutostart } from './app/autostart'
+import { applyDockPolicy, launchTarget } from './app/runtime'
+import { MainWindowController } from './app/main-window'
+import { TrayController, type TrayMenuLabels } from './app/tray'
 
-const isDev = !app.isPackaged
+let quitting = false
 
-function createMainWindow(): BrowserWindow {
-  const window = new BrowserWindow({
-    width: 1080,
-    height: 720,
-    minWidth: 900,
-    minHeight: 600,
-    show: false,
-    backgroundColor: '#111318',
-    title: 'HeartBeat',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-    titleBarOverlay:
-      process.platform === 'darwin'
-        ? false
-        : { color: '#00000000', symbolColor: '#a6a6a6', height: 52 },
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  })
-
-  window.once('ready-to-show', () => window.show())
-
-  window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-
-  const devServer = process.env['ELECTRON_RENDERER_URL']
-  if (isDev && devServer) {
-    void window.loadURL(devServer)
-  } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
-  return window
+function trayLabels(language: Language): TrayMenuLabels {
+  const t = translator(language)
+  return { open: t('menu.open'), quit: t('menu.quit'), status: t('menu.status') }
 }
 
-app.whenReady().then(() => {
+function bootstrap(): void {
   app.setName('HeartBeat')
-  if (process.platform === 'win32') {
+  if (platformKey() === 'windows') {
     app.setAppUserModelId('com.heartbeat.client')
   }
-  logger.info('Main window created')
-  createMainWindow()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow()
-    }
+  app.on('before-quit', () => {
+    quitting = true
   })
-})
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})
+  app.whenReady().then(() => {
+    applyDockPolicy()
+
+    const firstRun = !existsSync(configPath())
+    const config = appConfigStore.load()
+    secretStore.load()
+    logger.info(`Client starting, first_run=${firstRun} platform=${platformKey()}`)
+
+    const provider = createAutostartProvider(launchTarget())
+    if (app.isPackaged) {
+      const applied = syncAutostart(provider, config.autostart.enabled)
+      if (applied !== config.autostart.enabled) {
+        appConfigStore.replace({ ...config, autostart: { enabled: applied } })
+      }
+    } else {
+      logger.warn(
+        `Autostart left untouched in development, configured=${config.autostart.enabled} registered=${provider.isEnabled()}`
+      )
+    }
+
+    const windows = new MainWindowController({ isQuitting: () => quitting })
+    const tray = new TrayController(trayLabels(config.ui.language), {
+      onOpen: () => windows.show(),
+      onQuit: () => {
+        quitting = true
+        app.quit()
+      }
+    })
+    tray.show()
+
+    appConfigStore.subscribe((next) => tray.updateLabels(trayLabels(next.ui.language)))
+
+    const showWindow = firstRun || !config.setup_completed || !config.ui.start_minimized
+    if (showWindow) {
+      windows.show()
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0 || !windows.instance?.isVisible()) {
+        windows.show()
+      }
+    })
+
+    app.on('will-quit', () => tray.destroy())
+  })
+
+  app.on('second-instance', () => {
+    app.emit('activate')
+  })
+
+  app.on('window-all-closed', () => {
+    logger.info('All windows closed, staying resident in the tray')
+  })
+}
+
+const singleInstance = app.requestSingleInstanceLock()
+if (singleInstance) {
+  bootstrap()
+} else {
+  logger.warn('Another instance is already running, exiting')
+  app.quit()
+}
