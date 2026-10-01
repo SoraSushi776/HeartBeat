@@ -94,6 +94,14 @@ class ApiService:
         """Delete one guestbook message and return the ack payload."""
         return self._request("DELETE", f"/messages/{message_id}")
 
+    def create_message_reply(self, message_id: int, content: str) -> dict[str, Any]:
+        """Post a reply under one guestbook message and return the created row."""
+        return self._request(
+            "POST",
+            f"/messages/{message_id}/replies",
+            json={"content": content},
+        )
+
     def list_message_bans(self) -> dict[str, Any]:
         """Return the guestbook IP ban list payload."""
         return self._request("GET", "/messages/bans")

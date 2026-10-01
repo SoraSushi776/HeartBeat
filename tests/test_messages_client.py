@@ -8,9 +8,11 @@ import unittest
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from heartbeat.client import notify
+from heartbeat.client.api import ApiError
 from heartbeat.client.i18n import Translator
 from heartbeat.client.window.message_view import MessageView
-from heartbeat.client.worker.messages import _new_rows, _rows
+from heartbeat.client.window.reply_dialog import REPLY_MAX_LENGTH, ReplyDialog
+from heartbeat.client.worker.messages import MessageWorker, _new_rows, _rows
 from heartbeat.protocol.models import Platform
 
 _APP: QApplication | None = None
@@ -195,6 +197,110 @@ class MessageViewTest(unittest.TestCase):
         self.assertIsNotNone(window.messages)
         window.close()
         app.processEvents()
+
+
+class MessageReplyTest(unittest.TestCase):
+    def test_row_text_marks_reply_count_and_tooltip(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_messages(
+            {
+                "items": [
+                    {
+                        "id": 1,
+                        "author": "Sora",
+                        "content": "hi",
+                        "created_ts": 1,
+                        "replies": [{"id": 5, "content": "welcome", "created_ts": 2}],
+                    },
+                    {"id": 2, "author": "", "content": "plain", "created_ts": 3},
+                ]
+            }
+        )
+        self.assertIn("1 条回复", view._list.item(0).text())
+        self.assertIn("welcome", view._list.item(0).toolTip())
+        self.assertNotIn("条回复", view._list.item(1).text())
+        view.close()
+        app.processEvents()
+
+    def test_row_text_survives_missing_replies(self) -> None:
+        app = _app()
+        view = MessageView(Translator("zh-CN"))
+        view.apply_messages(
+            {"items": [{"id": 1, "content": "x", "created_ts": 1, "replies": None}]}
+        )
+        self.assertNotIn("条回复", view._list.item(0).text())
+        view.retranslate()
+        view.close()
+        app.processEvents()
+
+    def test_reply_dialog_gates_submit_on_content(self) -> None:
+        app = _app()
+        dialog = ReplyDialog(
+            Translator("zh-CN"),
+            {
+                "id": 1,
+                "author": "Sora",
+                "content": "hi",
+                "replies": [{"id": 5, "content": "welcome"}],
+            },
+        )
+        self.assertFalse(dialog._ok_button.isEnabled())
+        self.assertEqual(dialog._replies.count(), 1)
+        dialog._content.setPlainText("  answer  ")
+        self.assertTrue(dialog._ok_button.isEnabled())
+        self.assertEqual(dialog.reply_text(), "answer")
+        dialog._content.setPlainText("   ")
+        self.assertFalse(dialog._ok_button.isEnabled())
+        dialog.close()
+        app.processEvents()
+
+    def test_reply_dialog_without_replies_hides_list(self) -> None:
+        app = _app()
+        dialog = ReplyDialog(Translator("zh-CN"), {"id": 1, "author": "", "content": "hi"})
+        self.assertFalse(dialog._replies.isVisibleTo(dialog))
+        self.assertTrue(dialog._replies_empty_label.isVisibleTo(dialog))
+        dialog.close()
+        app.processEvents()
+
+    def test_reply_dialog_caps_length(self) -> None:
+        app = _app()
+        dialog = ReplyDialog(Translator("zh-CN"), {"id": 1, "content": "hi"})
+        dialog._content.setPlainText("x" * (REPLY_MAX_LENGTH + 40))
+        self.assertEqual(len(dialog._content.toPlainText()), REPLY_MAX_LENGTH)
+        dialog.close()
+        app.processEvents()
+
+    def test_worker_reports_created_reply(self) -> None:
+        service = _StubService(result={"id": 7, "message_id": 2, "content": "ok"})
+        worker = MessageWorker(service)
+        created: list[object] = []
+        worker.reply_created.connect(created.append)
+        worker.create_reply(2, "ok")
+        self.assertEqual(created, [{"id": 7, "message_id": 2, "content": "ok"}])
+
+    def test_worker_reports_reply_failure(self) -> None:
+        service = _StubService(failure=ApiError("boom"))
+        worker = MessageWorker(service)
+        failures: list[str] = []
+        worker.reply_create_failed.connect(failures.append)
+        worker.create_reply(2, "ok")
+        self.assertEqual(failures, ["boom"])
+
+
+class _StubService:
+    """ApiService stand-in recording reply calls."""
+
+    def __init__(self, result: object = None, failure: Exception | None = None) -> None:
+        self._result = result
+        self._failure = failure
+        self.calls: list[tuple[int, str]] = []
+
+    def create_message_reply(self, message_id: int, content: str) -> object:
+        self.calls.append((message_id, content))
+        if self._failure is not None:
+            raise self._failure
+        return self._result
 
 
 if __name__ == "__main__":

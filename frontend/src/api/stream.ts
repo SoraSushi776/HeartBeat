@@ -1,11 +1,12 @@
 import { fetchStatus } from "./http"
-import type { SnapshotEvent, StatusData } from "../types/protocol"
+import type { MessageReply, SnapshotEvent, StatusData } from "../types/protocol"
 
 export type StreamMode = "sse" | "poll" | "idle"
 
 export interface StreamHandlers {
   onStatus: (data: StatusData) => void
   onSnapshot: (data: SnapshotEvent) => void
+  onMessageReply: (data: MessageReply) => void
   onModeChange: (mode: StreamMode) => void
 }
 
@@ -31,6 +32,7 @@ export class StatusStream {
     source.addEventListener("status", (event) => this.emitStatus(event))
     source.addEventListener("heartbeat", (event) => this.emitStatus(event))
     source.addEventListener("snapshot", (event) => this.emitSnapshot(event))
+    source.addEventListener("message_reply", (event) => this.emitMessageReply(event))
     source.onerror = () => {
       source.close()
       this.source = null
@@ -80,6 +82,14 @@ export class StatusStream {
   private emitSnapshot(event: MessageEvent<string>): void {
     try {
       this.handlers.onSnapshot(JSON.parse(event.data) as SnapshotEvent)
+    } catch {
+      return
+    }
+  }
+
+  private emitMessageReply(event: MessageEvent<string>): void {
+    try {
+      this.handlers.onMessageReply(JSON.parse(event.data) as MessageReply)
     } catch {
       return
     }

@@ -73,7 +73,7 @@ async function onSubmit(): Promise<void> {
       <span>显示 IP 属地</span>
     </label>
     <ul v-if="messages.length" class="message-list">
-      <li v-for="message in messages" :key="message.id" class="message">
+      <li v-for="message in messages" :id="`message-${message.id}`" :key="message.id" class="message">
         <div class="message-head">
           <span class="author">{{ message.author || "匿名" }}</span>
           <span class="meta">
@@ -84,6 +84,15 @@ async function onSubmit(): Promise<void> {
           </span>
         </div>
         <p class="body">{{ message.content }}</p>
+        <ul v-if="message.replies?.length" class="reply-list">
+          <li v-for="reply in message.replies" :key="reply.id" class="reply">
+            <span class="reply-badge">回复</span>
+            <span class="reply-body">{{ reply.content }}</span>
+            <span class="muted reply-time">
+              {{ formatRelative(reply.created_ts, store.nowMs.value) }}
+            </span>
+          </li>
+        </ul>
       </li>
     </ul>
     <p v-else class="muted empty">暂无留言</p>
@@ -156,6 +165,50 @@ async function onSubmit(): Promise<void> {
   padding: 12px;
   border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-high);
+  transition: box-shadow 0.25s ease;
+}
+
+.message.is-highlighted {
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+
+.reply-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--md-sys-color-primary);
+  border-radius: 6px;
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.reply-badge {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--md-sys-color-on-primary);
+  background: var(--md-sys-color-primary);
+}
+
+.reply-body {
+  flex: 1;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.reply-time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
 }
 
 .message-head {

@@ -10,6 +10,7 @@ import {
   fetchStatus,
 } from "../api/http"
 import { StatusStream, type StreamMode } from "../api/stream"
+import { detectReplyNotices, type ReplyNotice } from "../utils/replyNotify"
 import {
   demoDiaries,
   demoFriends,
@@ -29,6 +30,8 @@ import type {
 
 const ONLINE_WINDOW_MS = 90_000
 const TICK_MS = 10_000
+const REPLY_POLL_MS = 30_000
+const NOTICE_TTL_MS = 15_000
 
 export class DashboardStore {
   readonly status = shallowRef<StatusData | null>(null)
@@ -41,6 +44,7 @@ export class DashboardStore {
   readonly lightboxOpen = ref(false)
   readonly demoMode = ref(false)
   readonly backgroundUrl = ref("")
+  readonly notices = ref<ReplyNotice[]>([])
   readonly site = shallowRef<SiteInfo>({
     title: "HeartBeat",
     tagline: "个人主页与实时状态",
@@ -57,6 +61,7 @@ export class DashboardStore {
 
   private stream: StatusStream | null = null
   private clock: number | null = null
+  private replyTimer: number | null = null
 
   readonly lastHeartbeatTs = computed(() => this.status.value?.last_heartbeat_ts ?? 0)
 
@@ -140,13 +145,26 @@ export class DashboardStore {
     }
   }
 
-  /** 拉取留言列表 */
+  /** 拉取留言列表，并检出首次出现回复的留言 */
   async loadMessages(): Promise<void> {
     try {
       const list = await fetchMessages()
       this.messages.value = list.items
+      this.pushNotices(detectReplyNotices(list.items))
     } catch {
       this.messages.value = demoMessages()
+    }
+  }
+
+  /** 关闭一条回复通知 */
+  dismissNotice(notice: ReplyNotice): void {
+    this.notices.value = this.notices.value.filter((item) => item !== notice)
+  }
+
+  private pushNotices(notices: ReplyNotice[]): void {
+    for (const notice of notices) {
+      this.notices.value = [...this.notices.value, notice]
+      window.setTimeout(() => this.dismissNotice(notice), NOTICE_TTL_MS)
     }
   }
 
@@ -176,16 +194,18 @@ export class DashboardStore {
     this.lightboxOpen.value = false
   }
 
-  /** 启动时钟与实时流，先全量后增量 */
+  /** 启动时钟、留言轮询与实时流，先全量后增量 */
   start(): void {
     this.stop()
     void this.loadAll()
     this.clock = window.setInterval(() => {
       this.nowMs.value = Date.now()
     }, TICK_MS)
+    this.replyTimer = window.setInterval(() => void this.loadMessages(), REPLY_POLL_MS)
     this.stream = new StatusStream({
       onStatus: (data) => this.applyStatus(data),
       onSnapshot: (data) => this.applySnapshot(data),
+      onMessageReply: () => void this.loadMessages(),
       onModeChange: (mode) => {
         this.streamMode.value = mode
       },
@@ -193,11 +213,15 @@ export class DashboardStore {
     this.stream.start()
   }
 
-  /** 停止时钟与实时流 */
+  /** 停止时钟、留言轮询与实时流 */
   stop(): void {
     if (this.clock !== null) {
       window.clearInterval(this.clock)
       this.clock = null
+    }
+    if (this.replyTimer !== null) {
+      window.clearInterval(this.replyTimer)
+      this.replyTimer = null
     }
     this.stream?.stop()
     this.stream = null

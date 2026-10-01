@@ -6,6 +6,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QDialog,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -18,16 +19,18 @@ from PySide6.QtWidgets import (
 )
 
 from heartbeat.client.i18n import Translator
+from heartbeat.client.window.reply_dialog import ReplyDialog
 
 
 class MessageView(QWidget):
-    """Show guestbook rows with IP, location, delete and IP ban controls."""
+    """Show guestbook rows with IP, location, reply, delete and IP ban controls."""
 
     load_requested = Signal()
     bans_requested = Signal()
     delete_requested = Signal(int)
     ban_requested = Signal(str)
     unban_requested = Signal(int)
+    reply_requested = Signal(int, str)
 
     def __init__(self, translator: Translator) -> None:
         super().__init__()
@@ -37,6 +40,7 @@ class MessageView(QWidget):
         self._list = QListWidget()
         self._ban_list = QListWidget()
         self._refresh_button = QPushButton()
+        self._reply_button = QPushButton()
         self._delete_button = QPushButton()
         self._ban_button = QPushButton()
         self._unban_button = QPushButton()
@@ -76,6 +80,7 @@ class MessageView(QWidget):
     def retranslate(self) -> None:
         """Refresh all labels for the active language."""
         self._refresh_button.setText(self._t.tr("button.refresh"))
+        self._reply_button.setText(self._t.tr("message.reply"))
         self._delete_button.setText(self._t.tr("button.delete"))
         self._ban_button.setText(self._t.tr("message.ban_ip"))
         self._unban_button.setText(self._t.tr("message.unban_ip"))
@@ -89,11 +94,13 @@ class MessageView(QWidget):
             item = self._list.item(index)
             if item is not None:
                 item.setText(_row_text(row, self._t))
+                item.setToolTip(_tooltip(row, self._t))
 
     def _build_layout(self) -> None:
         toolbar = QHBoxLayout()
         toolbar.addWidget(self._empty_label)
         toolbar.addStretch(1)
+        toolbar.addWidget(self._reply_button)
         toolbar.addWidget(self._delete_button)
         toolbar.addWidget(self._ban_button)
         toolbar.addWidget(self._refresh_button)
@@ -122,6 +129,7 @@ class MessageView(QWidget):
 
     def _wire(self) -> None:
         self._refresh_button.clicked.connect(self._on_refresh)
+        self._reply_button.clicked.connect(self._on_reply)
         self._delete_button.clicked.connect(self._on_delete)
         self._ban_button.clicked.connect(self._on_ban)
         self._unban_button.clicked.connect(self._on_unban)
@@ -129,6 +137,21 @@ class MessageView(QWidget):
     def _on_refresh(self) -> None:
         self.load_requested.emit()
         self.bans_requested.emit()
+
+    def _on_reply(self) -> None:
+        row = self._selected_row()
+        if row is None:
+            return
+        message_id = row.get("id")
+        if not isinstance(message_id, int):
+            return
+        dialog = ReplyDialog(self._t, row, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        text = dialog.reply_text()
+        if not text:
+            return
+        self.reply_requested.emit(message_id, text)
 
     def _on_delete(self) -> None:
         message_id = self._selected_message_id()
@@ -204,11 +227,32 @@ def _row_text(row: dict[str, Any], translator: Translator) -> str:
     content = str(row.get("content") or "")
     ip = str(row.get("ip") or "").strip() or translator.tr("message.unknown_ip")
     location = str(row.get("location") or "").strip() or translator.tr("message.unknown_location")
-    return f"{author}  ·  {ip}  ·  {location}  ·  {content}"
+    return f"{author}  ·  {ip}  ·  {location}  ·  {content}{_reply_suffix(row, translator)}"
+
+
+def _reply_suffix(row: dict[str, Any], translator: Translator) -> str:
+    """Build the reply counter suffix for a message row."""
+    replies = row.get("replies")
+    count = len(replies) if isinstance(replies, list) else 0
+    if count == 0:
+        return ""
+    return "  ·  " + translator.tr("message.reply_count").format(count=count)
 
 
 def _to_item(row: dict[str, Any], translator: Translator) -> QListWidgetItem:
     """Build one list entry from a message row."""
     item = QListWidgetItem(_row_text(row, translator))
-    item.setToolTip(str(row.get("content") or ""))
+    item.setToolTip(_tooltip(row, translator))
     return item
+
+
+def _tooltip(row: dict[str, Any], translator: Translator) -> str:
+    """Build the hover text listing every reply on a message row."""
+    replies = row.get("replies")
+    if not isinstance(replies, list) or not replies:
+        return str(row.get("content") or "")
+    lines = [translator.tr("message.reply_existing")]
+    for item in replies:
+        payload = item if isinstance(item, dict) else {}
+        lines.append(f"↳ {payload.get('content') or ''}")
+    return "\n".join(lines)

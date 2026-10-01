@@ -49,6 +49,15 @@ class Message(SQLModel, table=True):
     expose_ip: bool = False
 
 
+class MessageReply(SQLModel, table=True):
+    """Guestbook reply row."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    message_id: int = Field(index=True)
+    content: str = ""
+    created_ts: int = Field(default=0, index=True)
+
+
 class MessageBan(SQLModel, table=True):
     """Banned guestbook IP row."""
 

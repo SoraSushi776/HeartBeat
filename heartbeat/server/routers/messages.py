@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -10,7 +11,7 @@ from sqlmodel import Session, delete, func, select
 from heartbeat.protocol.models import API_PREFIX
 from heartbeat.server.dependencies import get_session, require_api_key
 from heartbeat.server.envelope import ApiError, ok
-from heartbeat.server.models import Message, MessageBan
+from heartbeat.server.models import Message, MessageBan, MessageReply
 from heartbeat.server.schemas import (
     BanCreate,
     BanList,
@@ -20,6 +21,8 @@ from heartbeat.server.schemas import (
     MessageCreate,
     MessageList,
     MessageOut,
+    ReplyCreate,
+    ReplyOut,
 )
 from heartbeat.server.services.events import EventBus, StreamEvent
 from heartbeat.server.services.ip_location import IpLocationService, client_ip_from_headers
@@ -50,8 +53,9 @@ def list_messages(
     total = session.exec(select(func.count()).select_from(Message)).one()
     statement = select(Message).order_by(Message.created_ts.desc(), Message.id.desc())
     rows = session.exec(statement.offset(offset).limit(limit)).all()
+    replies = _replies_by_message(session, rows)
     data = MessageList(
-        items=[_to_public_out(row) for row in rows],
+        items=[_to_public_out(row, replies.get(int(row.id or 0), [])) for row in rows],
         total=int(total),
         limit=limit,
         offset=offset,
@@ -69,8 +73,9 @@ def list_messages_admin(
     total = session.exec(select(func.count()).select_from(Message)).one()
     statement = select(Message).order_by(Message.created_ts.desc(), Message.id.desc())
     rows = session.exec(statement.offset(offset).limit(limit)).all()
+    replies = _replies_by_message(session, rows)
     data = MessageAdminList(
-        items=[_to_admin_out(row) for row in rows],
+        items=[_to_admin_out(row, replies.get(int(row.id or 0), [])) for row in rows],
         total=int(total),
         limit=limit,
         offset=offset,
@@ -102,8 +107,34 @@ def create_message(
     session.commit()
     session.refresh(row)
     logger.info("Message created: id=%s author=%s", row.id, row.author or "anonymous")
-    out = _to_public_out(row)
+    out = _to_public_out(row, [])
     EventBus.instance().publish(StreamEvent(event="message", data=out.model_dump(mode="json")))
+    return ok(out.model_dump(mode="json"))
+
+
+@router.post("/{message_id}/replies", dependencies=write_deps)
+def create_reply(
+    message_id: int,
+    payload: ReplyCreate,
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Store a reply under one guestbook message."""
+    parent = session.get(Message, message_id)
+    if parent is None:
+        raise ApiError(404, "Message not found")
+    row = MessageReply(
+        message_id=message_id,
+        content=payload.content,
+        created_ts=current_ms(),
+    )
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    logger.info("Message reply created: id=%s message_id=%s", row.id, message_id)
+    out = _to_reply_out(row)
+    EventBus.instance().publish(
+        StreamEvent(event="message_reply", data=out.model_dump(mode="json"))
+    )
     return ok(out.model_dump(mode="json"))
 
 
@@ -144,10 +175,11 @@ def delete_ban(ban_id: int, session: Session = Depends(get_session)) -> dict[str
 
 @router.delete("/{message_id}", dependencies=write_deps)
 def delete_message(message_id: int, session: Session = Depends(get_session)) -> dict[str, Any]:
-    """Delete one guestbook message."""
+    """Delete one guestbook message together with its replies."""
     row = session.get(Message, message_id)
     if row is None:
         raise ApiError(404, "Message not found")
+    session.exec(delete(MessageReply).where(MessageReply.message_id == message_id))
     session.exec(delete(Message).where(Message.id == message_id))
     session.commit()
     logger.info("Message deleted: id=%s", message_id)
@@ -184,8 +216,37 @@ def _ensure_within_rate_limit(ip: str) -> None:
         raise ApiError(429, "Too many messages, slow down")
 
 
-def _to_public_out(row: Message) -> MessageOut:
-    """Convert a message row into the public response model."""
+def _replies_by_message(
+    session: Session,
+    rows: Sequence[Message],
+) -> dict[int, list[MessageReply]]:
+    """Load replies for the given messages grouped by message id."""
+    message_ids = [int(row.id or 0) for row in rows]
+    if not message_ids:
+        return {}
+    statement = (
+        select(MessageReply)
+        .where(MessageReply.message_id.in_(message_ids))
+        .order_by(MessageReply.created_ts.asc(), MessageReply.id.asc())
+    )
+    grouped: dict[int, list[MessageReply]] = {}
+    for row in session.exec(statement).all():
+        grouped.setdefault(row.message_id, []).append(row)
+    return grouped
+
+
+def _to_reply_out(row: MessageReply) -> ReplyOut:
+    """Convert a reply row into the response model."""
+    return ReplyOut(
+        id=int(row.id or 0),
+        message_id=row.message_id,
+        content=row.content,
+        created_ts=row.created_ts,
+    )
+
+
+def _to_public_out(row: Message, replies: Sequence[MessageReply]) -> MessageOut:
+    """Convert a message row and its replies into the public response model."""
     return MessageOut(
         id=int(row.id or 0),
         author=row.author,
@@ -193,11 +254,12 @@ def _to_public_out(row: Message) -> MessageOut:
         created_ts=row.created_ts,
         expose_ip=row.expose_ip,
         location=row.location if row.expose_ip else None,
+        replies=[_to_reply_out(item) for item in replies],
     )
 
 
-def _to_admin_out(row: Message) -> MessageAdminOut:
-    """Convert a message row into the admin response model."""
+def _to_admin_out(row: Message, replies: Sequence[MessageReply]) -> MessageAdminOut:
+    """Convert a message row and its replies into the admin response model."""
     return MessageAdminOut(
         id=int(row.id or 0),
         author=row.author,
@@ -206,6 +268,7 @@ def _to_admin_out(row: Message) -> MessageAdminOut:
         ip=row.ip,
         location=row.location,
         expose_ip=row.expose_ip,
+        replies=[_to_reply_out(item) for item in replies],
     )
 
 

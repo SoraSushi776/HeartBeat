@@ -72,6 +72,13 @@ export interface FriendLink {
   sort?: number
 }
 
+export interface MessageReply {
+  id: number
+  message_id: number
+  content: string
+  created_ts: number
+}
+
 export interface Message {
   id: number
   author: string
@@ -79,6 +86,7 @@ export interface Message {
   created_ts: number
   expose_ip?: boolean
   location?: string | null
+  replies?: MessageReply[]
 }
 
 export interface MessageList {

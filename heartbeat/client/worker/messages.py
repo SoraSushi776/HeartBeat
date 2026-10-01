@@ -23,6 +23,8 @@ class MessageWorker(QObject):
     message_arrived = Signal(object)
     message_deleted = Signal(int)
     message_delete_failed = Signal(str)
+    reply_created = Signal(object)
+    reply_create_failed = Signal(str)
     bans_loaded = Signal(object)
     bans_failed = Signal(str)
     ban_created = Signal(object)
@@ -79,6 +81,18 @@ class MessageWorker(QObject):
             return
         logger.info("Message deleted: id=%s", message_id)
         self.message_deleted.emit(message_id)
+
+    @Slot(int, str)
+    def create_reply(self, message_id: int, content: str) -> None:
+        """Post a reply under one guestbook message and report the outcome."""
+        try:
+            data = self._service.create_message_reply(message_id, content)
+        except ApiError as exc:
+            logger.warning("Message reply failed: id=%s %s", message_id, exc.message)
+            self.reply_create_failed.emit(exc.message)
+            return
+        logger.info("Message reply created: message_id=%s", message_id)
+        self.reply_created.emit(data)
 
     @Slot(str)
     def create_ban(self, ip: str) -> None:

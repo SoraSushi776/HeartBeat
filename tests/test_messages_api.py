@@ -6,11 +6,12 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import select
 
 from heartbeat.server import config as server_config
 from heartbeat.server.db import create_session, reset_engine
 from heartbeat.server.main import create_app
-from heartbeat.server.models import Heartbeat
+from heartbeat.server.models import Heartbeat, MessageReply
 from heartbeat.server.services import ip_location as ip_location_module
 from heartbeat.server.services.ip_location import format_location
 from heartbeat.server.services.ratelimit import RateLimiter
@@ -214,6 +215,69 @@ def test_ban_routes_require_api_key(client: TestClient) -> None:
     assert client.get(f"{API}/bans").status_code == 401
     assert client.post(f"{API}/bans", json={"ip": "1.2.3.4"}).status_code == 401
     assert client.delete(f"{API}/bans/1").status_code == 401
+
+
+def test_reply_create_and_list(client: TestClient) -> None:
+    """Replies are stored under one message and returned with both lists."""
+    _go_online()
+    message_id = client.post(API, json={"content": "hi"}).json()["data"]["id"]
+    created = client.post(
+        f"{API}/{message_id}/replies",
+        json={"content": "thanks"},
+        headers={"X-API-Key": API_KEY},
+    )
+    assert created.status_code == 200
+    reply = created.json()["data"]
+    assert reply["message_id"] == message_id
+    assert reply["content"] == "thanks"
+    public = client.get(API).json()["data"]["items"][0]
+    assert [item["content"] for item in public["replies"]] == ["thanks"]
+    admin = client.get(f"{API}/admin", headers={"X-API-Key": API_KEY}).json()["data"]["items"][0]
+    assert [item["content"] for item in admin["replies"]] == ["thanks"]
+
+
+def test_reply_requires_api_key_and_existing_message(client: TestClient) -> None:
+    """Reply writes reject missing credentials and unknown parent messages."""
+    _go_online()
+    message_id = client.post(API, json={"content": "hi"}).json()["data"]["id"]
+    assert client.post(f"{API}/{message_id}/replies", json={"content": "x"}).status_code == 401
+    missing = client.post(
+        f"{API}/{message_id + 900}/replies",
+        json={"content": "x"},
+        headers={"X-API-Key": API_KEY},
+    )
+    assert missing.status_code == 404
+
+
+def test_reply_rejects_blank_content(client: TestClient) -> None:
+    """Reply writes reject empty or whitespace-only content."""
+    _go_online()
+    message_id = client.post(API, json={"content": "hi"}).json()["data"]["id"]
+    for payload in ({"content": ""}, {"content": "   "}):
+        response = client.post(
+            f"{API}/{message_id}/replies",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
+        )
+        assert response.status_code == 400
+
+
+def test_delete_message_removes_replies(client: TestClient) -> None:
+    """Deleting a message also drops the replies attached to it."""
+    _go_online()
+    message_id = client.post(API, json={"content": "hi"}).json()["data"]["id"]
+    client.post(
+        f"{API}/{message_id}/replies",
+        json={"content": "bye"},
+        headers={"X-API-Key": API_KEY},
+    )
+    deleted = client.delete(f"{API}/{message_id}", headers={"X-API-Key": API_KEY})
+    assert deleted.status_code == 200
+    session = create_session()
+    try:
+        assert session.exec(select(MessageReply)).all() == []
+    finally:
+        session.close()
 
 
 def test_format_location_prefers_province_for_china() -> None:

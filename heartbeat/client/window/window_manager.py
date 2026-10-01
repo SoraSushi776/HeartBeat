@@ -321,6 +321,7 @@ class WindowManager(QObject):
         messages.load_requested.connect(self._message_worker.refresh)
         messages.bans_requested.connect(self._message_worker.load_bans)
         messages.delete_requested.connect(self._message_worker.delete_message)
+        messages.reply_requested.connect(self._message_worker.create_reply)
         messages.ban_requested.connect(self._message_worker.create_ban)
         messages.unban_requested.connect(self._message_worker.delete_ban)
         self._message_worker.messages_loaded.connect(messages.apply_messages)
@@ -328,6 +329,8 @@ class WindowManager(QObject):
         self._message_worker.message_arrived.connect(self._on_message_arrived)
         self._message_worker.message_deleted.connect(self._on_message_mutated)
         self._message_worker.message_delete_failed.connect(messages.show_error)
+        self._message_worker.reply_created.connect(self._on_reply_mutated)
+        self._message_worker.reply_create_failed.connect(messages.show_error)
         self._message_worker.bans_loaded.connect(messages.apply_bans)
         self._message_worker.bans_failed.connect(messages.show_error)
         self._message_worker.ban_created.connect(self._on_ban_mutated)
@@ -338,6 +341,11 @@ class WindowManager(QObject):
     @Slot(int)
     def _on_message_mutated(self, _message_id: int) -> None:
         """Reload the message list after a delete."""
+        self._window.messages.load_requested.emit()
+
+    @Slot(object)
+    def _on_reply_mutated(self, _row: object) -> None:
+        """Reload the message list after a reply is published."""
         self._window.messages.load_requested.emit()
 
     @Slot(object)

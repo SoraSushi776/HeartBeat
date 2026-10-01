@@ -226,6 +226,7 @@ SSE 实时推送。事件类型：
 | `heartbeat` | 精简心跳（可不含截图） |
 | `snapshot` | 截图更新通知 `{ "client_id", "ts", "url" }` |
 | `message` | 新留言，见「四、留言」资源模型 |
+| `message_reply` | 新回复，见「四、留言」回复资源模型 |
 
 单用户场景下前端优先短轮询 `GET /api/v1/status`（5–15 秒），SSE 作为增强。
 
@@ -292,7 +293,8 @@ SSE 实时推送。事件类型：
   "content": "路过留个脚印",
   "created_ts": 1761648000000,
   "expose_ip": false,
-  "location": null
+  "location": null,
+  "replies": []
 }
 ```
 
@@ -304,6 +306,27 @@ SSE 实时推送。事件类型：
 | `created_ts` | int | 响应 | 创建时间，UTC 毫秒 |
 | `expose_ip` | bool | 否 | 是否允许公开 IP 属地，默认 `false` |
 | `location` | string \| null | 响应 | IP 属地，仅 `expose_ip` 为 `true` 时返回 |
+| `replies` | Reply[] | 响应 | 该留言下的回复，按时间升序 |
+
+### 回复资源模型
+
+```json
+{
+  "id": 3,
+  "message_id": 1,
+  "content": "谢谢，常来",
+  "created_ts": 1761648600000
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | int | 响应 | 自增主键 |
+| `message_id` | int | 响应 | 所属留言 ID |
+| `content` | string | 是 | 正文，去空白后非空，最长 500 |
+| `created_ts` | int | 响应 | 创建时间，UTC 毫秒 |
+
+回复只由客户端（`X-API-Key`）写入，前端只读展示。删除留言会连同其回复一并删除。
 
 ### 管理资源模型
 
@@ -317,7 +340,8 @@ SSE 实时推送。事件类型：
   "created_ts": 1761648000000,
   "ip": "203.0.113.9",
   "location": "广东",
-  "expose_ip": true
+  "expose_ip": true,
+  "replies": []
 }
 ```
 
@@ -337,10 +361,11 @@ SSE 实时推送。事件类型：
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |------|------|------|------|
-| GET | `/api/v1/messages` | 无 | 列表，倒序，`?limit=&offset=` |
+| GET | `/api/v1/messages` | 无 | 列表，倒序，`?limit=&offset=`，每条带 `replies` |
 | POST | `/api/v1/messages` | 无 | 发布留言，body 为 `{ "author"?, "content", "expose_ip"? }` |
-| GET | `/api/v1/messages/admin` | `X-API-Key` | 管理列表，含 `ip` 与 `location` |
-| DELETE | `/api/v1/messages/{id}` | `X-API-Key` | 删除单条留言 |
+| GET | `/api/v1/messages/admin` | `X-API-Key` | 管理列表，含 `ip`、`location` 与 `replies` |
+| DELETE | `/api/v1/messages/{id}` | `X-API-Key` | 删除单条留言及其回复 |
+| POST | `/api/v1/messages/{id}/replies` | `X-API-Key` | 回复留言，body 为 `{ "content" }` |
 | GET | `/api/v1/messages/bans` | `X-API-Key` | 封禁列表 |
 | POST | `/api/v1/messages/bans` | `X-API-Key` | 封禁 IP，body 为 `{ "ip" }` |
 | DELETE | `/api/v1/messages/bans/{id}` | `X-API-Key` | 解封 |
@@ -363,7 +388,9 @@ SSE 实时推送。事件类型：
 
 服务端在 `POST` 时记录客户端 IP（优先 `X-Forwarded-For` 第一段），并解析属地缓存到本地；属地查询只在服务端发起，失败时写 `未知`。
 
-SSE `message` 事件在新留言落库后推送，data 为上述资源模型。前端发送表单在 `online` 为 `false` 时应禁用。
+SSE `message` 事件在新留言落库后推送，data 为上述资源模型。SSE `message_reply` 事件在回复落库后推送，data 为回复资源模型。前端发送表单在 `online` 为 `false` 时应禁用。
+
+前端不做回复写入，只在留言下只读展示 `replies`。新回复提醒由前端本地实现：把已提醒过回复的留言 ID 存进 `localStorage`（键 `heartbeat-message-replies`），首次访问只写入基线不提醒，之后列表里出现带回复且 ID 不在基线的留言时弹提示，点击定位到该留言。
 
 ## 五、友情链接
 

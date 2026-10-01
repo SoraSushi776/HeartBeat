@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import SiteFooter from "./components/SiteFooter.vue"
+import ReplyNotices from "./components/ReplyNotices.vue"
 import { NAV_ITEMS } from "./router"
 import { useDashboard, useDashboardLifecycle } from "./stores/dashboard"
 import { resolveAssetUrl } from "./utils/url"
@@ -100,6 +101,7 @@ onMounted(() => {
     </div>
     <SiteFooter />
   </div>
+  <ReplyNotices />
 </template>
 
 <style scoped>

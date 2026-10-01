@@ -14,6 +14,7 @@ from heartbeat.server.models import (
     IpLocationCache,
     Message,
     MessageBan,
+    MessageReply,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ TABLES = (
     Diary.__table__,
     Friend.__table__,
     Message.__table__,
+    MessageReply.__table__,
     MessageBan.__table__,
     IpLocationCache.__table__,
     GithubCache.__table__,

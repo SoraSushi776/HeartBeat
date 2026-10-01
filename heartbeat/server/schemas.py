@@ -174,6 +174,32 @@ class MessageCreate(SQLModel):
         return text
 
 
+class ReplyCreate(SQLModel):
+    """Guestbook reply create body."""
+
+    content: str
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        """Reject empty or whitespace-only content and cap its length."""
+        text = value.strip()
+        if not text:
+            raise ValueError("content must not be empty")
+        if len(text) > 500:
+            raise ValueError("content must be at most 500 characters")
+        return text
+
+
+class ReplyOut(SQLModel):
+    """Guestbook reply response body."""
+
+    id: int
+    message_id: int
+    content: str = ""
+    created_ts: int = 0
+
+
 class MessageOut(SQLModel):
     """Guestbook message response body for the public list."""
 
@@ -183,6 +209,7 @@ class MessageOut(SQLModel):
     created_ts: int = 0
     expose_ip: bool = False
     location: str | None = None
+    replies: list[ReplyOut] = Field(default_factory=list)
 
 
 class MessageAdminOut(SQLModel):
@@ -195,6 +222,7 @@ class MessageAdminOut(SQLModel):
     ip: str = ""
     location: str = ""
     expose_ip: bool = False
+    replies: list[ReplyOut] = Field(default_factory=list)
 
 
 class MessageList(SQLModel):
