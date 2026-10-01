@@ -17,5 +17,5 @@
     "noEmit": true,
     "outDir": "node_modules/.tmp/tsconfig.node"
   },
-  "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*"]
+  "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "scripts/**/*"]
 }
