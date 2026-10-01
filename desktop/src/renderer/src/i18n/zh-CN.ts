@@ -1,6 +1,6 @@
 export const zhCN = {
   'app.name': 'HeartBeat',
-  'nav.settings': '设置',
+  'nav.settings': '同步',
   'nav.diagnostics': '诊断',
   'nav.diary': '日记',
   'nav.friends': '友链',
@@ -177,7 +177,7 @@ export const zhCN = {
   'setup.recheck': '重新检测',
   'setup.all_good': '全部就绪',
   'setup.missing': '还有 {count} 项待处理',
-  'setup.server_hint': '填入服务端地址与 API 密钥，之后可随时在设置页修改',
+  'setup.server_hint': '填入服务端地址与 API 密钥，之后可随时在同步页修改',
   'setup.tools_hint': '这些工具用于读取正在播放的音乐',
   'setup.permissions_hint': 'macOS 需要授权后才能截图与读取播放器'
 } as const

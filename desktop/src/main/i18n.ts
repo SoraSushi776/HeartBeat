@@ -2,7 +2,7 @@ import type { Language } from './config/schema'
 
 export const mainStrings = {
   'zh-CN': {
-    'menu.open': '打开设置',
+    'menu.open': '打开主窗口',
     'menu.quit': '退出',
     'menu.status': '推送状态',
     'menu.status.on': '推送已开启',
@@ -11,7 +11,7 @@ export const mainStrings = {
     'notify.message.body': '收到一条新留言'
   },
   'en-US': {
-    'menu.open': 'Open Dashboard',
+    'menu.open': 'Open Window',
     'menu.quit': 'Quit',
     'menu.status': 'Push status',
     'menu.status.on': 'Push enabled',

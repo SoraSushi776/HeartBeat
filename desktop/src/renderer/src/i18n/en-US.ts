@@ -2,7 +2,7 @@ import type { Dictionary } from './zh-CN'
 
 export const enUS: Dictionary = {
   'app.name': 'HeartBeat',
-  'nav.settings': 'Settings',
+  'nav.settings': 'Sync',
   'nav.diagnostics': 'Diagnostics',
   'nav.diary': 'Diary',
   'nav.friends': 'Friends',
@@ -179,7 +179,7 @@ export const enUS: Dictionary = {
   'setup.recheck': 'Recheck',
   'setup.all_good': 'Everything is ready',
   'setup.missing': '{count} item(s) still pending',
-  'setup.server_hint': 'Enter the server URL and API key; both can be changed later in settings',
+  'setup.server_hint': 'Enter the server URL and API key; both can be changed later on the Sync page',
   'setup.tools_hint': 'These tools are used to read the current playback',
   'setup.permissions_hint': 'macOS needs permission before screenshots and player access work'
 }
