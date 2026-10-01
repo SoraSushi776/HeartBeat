@@ -5,8 +5,19 @@ import { platformKey } from '../config/paths'
 import { isTemplateTrayIcon, trayIconPath } from './assets'
 import { buildTrayMenuTemplate, type TrayMenuHandlers, type TrayMenuLabels } from './tray-menu'
 
+const TRAY_ICON_PT = { macos: 16, windows: 16, linux: 22 } as const
+
 function loadTrayImage(): Electron.NativeImage {
-  const image = nativeImage.createFromPath(trayIconPath())
+  const source = nativeImage.createFromPath(trayIconPath())
+  if (source.isEmpty()) {
+    return source
+  }
+  const size = TRAY_ICON_PT[platformKey()]
+  const image = source.resize({ width: size, height: size })
+  image.addRepresentation({
+    scaleFactor: 2,
+    buffer: source.resize({ width: size * 2, height: size * 2 }).toPNG()
+  })
   if (isTemplateTrayIcon()) {
     image.setTemplateImage(true)
   }
@@ -45,7 +56,9 @@ export class TrayController {
         this.tray?.popUpContextMenu(this.menu)
       }
     })
-    logger.info(`Tray shown, icon=${trayIconPath()}`)
+    logger.info(
+      `Tray shown icon=${trayIconPath()} size=${image.getSize().width}x${image.getSize().height} template=${image.isTemplateImage()}`
+    )
   }
 
   updateLabels(labels: TrayMenuLabels): void {
