@@ -15,23 +15,19 @@ export function useAsync<T>(loader: () => Promise<T>, deps: unknown[] = []): Asy
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [nonce, setNonce] = useState(0)
-  const alive = useRef(true)
-
-  useEffect(() => {
-    alive.current = true
-    return () => {
-      alive.current = false
-    }
-  }, [])
+  const hasData = useRef(false)
 
   useEffect(() => {
     let active = true
-    setLoading(true)
+    if (!hasData.current) {
+      setLoading(true)
+    }
     loader()
       .then((value) => {
         if (!active) {
           return
         }
+        hasData.current = true
         setData(value)
         setError(null)
       })
@@ -39,7 +35,9 @@ export function useAsync<T>(loader: () => Promise<T>, deps: unknown[] = []): Asy
         if (!active) {
           return
         }
-        setError(errorMessage(caught))
+        if (!hasData.current) {
+          setError(errorMessage(caught))
+        }
       })
       .finally(() => {
         if (active) {
@@ -53,7 +51,12 @@ export function useAsync<T>(loader: () => Promise<T>, deps: unknown[] = []): Asy
   }, [nonce, ...deps])
 
   const reload = useCallback(() => setNonce((value) => value + 1), [])
-  return { data, loading, error, reload, setData }
+  const update = useCallback((value: T | null) => {
+    hasData.current = value !== null
+    setData(value)
+  }, [])
+
+  return { data, loading, error, reload, setData: update }
 }
 
 export function useInterval(callback: () => void, delayMs: number | null): void {

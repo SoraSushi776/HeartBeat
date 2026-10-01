@@ -49,7 +49,8 @@ export function PageScaffold({ page, title, actions, children }: PageScaffoldPro
           overflowX: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          gap: 2
+          gap: 2,
+          '& > *': { flexShrink: 0 }
         }}
       >
         {children}
