@@ -6,7 +6,8 @@ import { AppTopBar } from './components/AppTopBar'
 import { NavigationRail } from './components/NavigationRail'
 import { DiagnosticsPage } from './pages/DiagnosticsPage'
 import { DiaryPage } from './pages/DiaryPage'
-import { PendingPage } from './pages/PendingPage'
+import { FriendsPage } from './pages/FriendsPage'
+import { MessagesPage } from './pages/MessagesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { useLanguage } from './i18n'
 import { useShell } from './shell/store'
@@ -34,8 +35,8 @@ export function App(): ReactNode {
         {page === 'settings' ? <SettingsPage /> : null}
         {page === 'diagnostics' ? <DiagnosticsPage /> : null}
         {page === 'diary' ? <DiaryPage /> : null}
-        {page === 'friends' ? <PendingPage page="friends" hint="友链列表 + 表单" /> : null}
-        {page === 'messages' ? <PendingPage page="messages" hint="留言列表 + 封禁管理" /> : null}
+        {page === 'friends' ? <FriendsPage /> : null}
+        {page === 'messages' ? <MessagesPage /> : null}
       </Box>
     </Box>
   )
