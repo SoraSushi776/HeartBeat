@@ -56,6 +56,18 @@ export class LinuxAutostartProvider implements AutostartProvider {
     }
     return !readFileSync(path, 'utf8').includes('Hidden=true')
   }
+
+  isUpToDate(): boolean {
+    const path = desktopEntryPath()
+    if (!existsSync(path)) {
+      return false
+    }
+    try {
+      return readFileSync(path, 'utf8') === buildDesktopEntry(this.target)
+    } catch {
+      return false
+    }
+  }
 }
 
 export function removeDesktopEntry(): void {

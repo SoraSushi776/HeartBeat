@@ -60,4 +60,17 @@ export class WindowsAutostartProvider implements AutostartProvider {
   isEnabled(): boolean {
     return runReg(registryQueryArgs()).ok
   }
+
+  isUpToDate(): boolean {
+    const result = runReg(registryQueryArgs())
+    if (!result.ok) {
+      return false
+    }
+    return parseRegistryValue(result.output) === commandLine(this.target)
+  }
+}
+
+export function parseRegistryValue(output: string): string {
+  const match = /REG_SZ\s+(.+)$/m.exec(output.trim())
+  return match ? match[1].trim() : ''
 }

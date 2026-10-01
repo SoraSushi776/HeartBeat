@@ -2,6 +2,7 @@ export interface AutostartProvider {
   enable: () => void
   disable: () => void
   isEnabled: () => boolean
+  isUpToDate: () => boolean
 }
 
 export interface AutostartTarget {

@@ -17,14 +17,14 @@ export function createAutostartProvider(target: AutostartTarget): AutostartProvi
 }
 
 export function syncAutostart(provider: AutostartProvider, enabled: boolean): boolean {
-  const current = provider.isEnabled()
-  if (enabled === current) {
-    return current
+  if (!enabled) {
+    if (provider.isEnabled()) {
+      provider.disable()
+    }
+    return provider.isEnabled()
   }
-  if (enabled) {
+  if (!provider.isEnabled() || !provider.isUpToDate()) {
     provider.enable()
-  } else {
-    provider.disable()
   }
   return provider.isEnabled()
 }

@@ -6,9 +6,11 @@ import { CollectorRegistry } from '../src/main/adapters/index'
 import { currentPlatform } from '../src/main/adapters/platform'
 import { runCommand } from '../src/main/adapters/shell'
 import { HeartbeatApi } from '../src/main/api'
+import { syncAutostart } from '../src/main/app/autostart/index'
+import type { AutostartProvider } from '../src/main/app/autostart/types'
 import { buildDesktopEntry, commandLine as linuxCommandLine, desktopEntryPath } from '../src/main/app/autostart/linux'
 import { buildPlist, launchctlArgs, plistPath } from '../src/main/app/autostart/macos'
-import { RUN_KEY, registryAddArgs, registryDeleteArgs, registryQueryArgs } from '../src/main/app/autostart/windows'
+import { RUN_KEY, parseRegistryValue, registryAddArgs, registryDeleteArgs, registryQueryArgs } from '../src/main/app/autostart/windows'
 import { buildTrayMenuTemplate } from '../src/main/app/tray-menu'
 import { linuxCommand, macosCommand, windowsCommand } from '../src/main/notify'
 import { MediaClock } from '../src/main/adapters/media/clock'
@@ -155,6 +157,43 @@ group('autostart / Windows run key')
   check('registryAddArgs.join', add.join(' ').includes('/t REG_SZ'))
   check('delete args remove the value', registryDeleteArgs().join(' ').includes('/v HeartBeat /f'))
   check('query args read the value', registryQueryArgs()[0] === 'query')
+}
+
+group('autostart sync')
+{
+  const scenarios = [
+    { name: 'off stays off', enabled: false, registered: false, upToDate: false, expect: 'none', result: false },
+    { name: 'off unregisters', enabled: false, registered: true, upToDate: true, expect: 'disable', result: false },
+    { name: 'on registers', enabled: true, registered: false, upToDate: false, expect: 'enable', result: true },
+    { name: 'on leaves a matching entry alone', enabled: true, registered: true, upToDate: true, expect: 'none', result: true },
+    { name: 'on rewrites a moved path', enabled: true, registered: true, upToDate: false, expect: 'enable', result: true }
+  ]
+  for (const scenario of scenarios) {
+    const calls: string[] = []
+    let registered = scenario.registered
+    const provider: AutostartProvider = {
+      enable: () => {
+        calls.push('enable')
+        registered = true
+      },
+      disable: () => {
+        calls.push('disable')
+        registered = false
+      },
+      isEnabled: () => registered,
+      isUpToDate: () => scenario.upToDate
+    }
+    const result = syncAutostart(provider, scenario.enabled)
+    check(`${scenario.name}`, (calls[0] ?? 'none') === scenario.expect && result === scenario.result, `${calls.join(',') || 'none'} -> ${result}`)
+  }
+}
+
+group('registry parsing')
+{
+  const expected = '"C:\\Program Files\\HeartBeat\\HeartBeat.exe"'
+  const output = ['(default)', `    HeartBeat    REG_SZ    ${expected}`, ''].join('\n')
+  check('reads the REG_SZ command', parseRegistryValue(output) === expected, parseRegistryValue(output))
+  check('empty output yields empty', parseRegistryValue('') === '')
 }
 
 group('notifications')

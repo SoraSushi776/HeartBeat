@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -78,5 +78,17 @@ export class MacosAutostartProvider implements AutostartProvider {
 
   isEnabled(): boolean {
     return existsSync(plistPath())
+  }
+
+  isUpToDate(): boolean {
+    const path = plistPath()
+    if (!existsSync(path)) {
+      return false
+    }
+    try {
+      return readFileSync(path, 'utf8') === buildPlist(this.target)
+    } catch {
+      return false
+    }
   }
 }
