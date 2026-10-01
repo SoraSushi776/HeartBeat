@@ -115,16 +115,29 @@ export function DiaryPage(): ReactNode {
     }
   }
 
+  const createNew = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await bridge.diary.create({ title: '', content: '', mood: null, tags: [] })
+      setDraft(toDraft(created))
+      setTab(0)
+      list.reload()
+    } catch (caught) {
+      setError(errorMessage(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const headerActions = useMemo(
     () => (
       <Box sx={{ display: 'flex', gap: 1 }}>
         <Button
           variant="tonal"
           startIcon={<AddIcon />}
-          onClick={() => {
-            setDraft(EMPTY_DRAFT)
-            setTab(0)
-          }}
+          onClick={() => void createNew()}
+          disabled={busy}
         >
           {t('diary.new')}
         </Button>

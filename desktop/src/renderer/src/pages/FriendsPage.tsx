@@ -108,10 +108,24 @@ export function FriendsPage(): ReactNode {
 
   const canSave = draft.name.trim().length > 0 && draft.url.trim().length > 0
 
+  const createNew = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await bridge.friend.create({ name: '', url: '', avatar_url: null, description: null, sort: 0 })
+      setDraft(toDraft(created))
+      list.reload()
+    } catch (caught) {
+      setError(errorMessage(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const headerActions = useMemo(
     () => (
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <Button variant="tonal" startIcon={<AddIcon />} onClick={() => setDraft(EMPTY_DRAFT)}>
+        <Button variant="tonal" startIcon={<AddIcon />} onClick={() => void createNew()} disabled={busy}>
           {t('friends.new')}
         </Button>
         <Button variant="contained" onClick={() => void save()} disabled={busy || !canSave}>
