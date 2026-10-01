@@ -329,12 +329,13 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
         }
       },
       MuiSlider: {
+        defaultProps: { valueLabelDisplay: 'auto' },
         styleOverrides: {
           root: { height: 4, padding: '13px 0' },
           rail: {
             height: 16,
             marginTop: -8,
-            borderRadius: 8,
+            borderRadius: 999,
             backgroundColor: scheme.surfaceContainerHighest,
             opacity: 1,
             '&::before, &::after': {
@@ -345,20 +346,51 @@ export function createMaterialYouTheme(mode: 'light' | 'dark', scheme: ColorSche
               height: 4,
               borderRadius: '50%',
               transform: 'translateY(-50%)',
-              backgroundColor: scheme.onSurfaceVariant
+              backgroundColor: alpha(scheme.onSurface, 0.38)
             },
-            '&::before': { left: 5 },
-            '&::after': { right: 5 }
+            '&::before': { left: 6 },
+            '&::after': { right: 6 },
+            '&.Mui-disabled': { backgroundColor: alpha(scheme.onSurface, 0.12) }
           },
-          track: { height: 16, marginTop: -8, borderRadius: 8, border: 'none', backgroundColor: scheme.primary },
+          track: {
+            height: 16,
+            marginTop: -8,
+            borderRadius: 999,
+            border: 'none',
+            backgroundColor: scheme.primary,
+            '&.Mui-disabled': { backgroundColor: alpha(scheme.onSurface, 0.38) }
+          },
           thumb: {
             width: 4,
             height: 44,
-            borderRadius: 2,
+            borderRadius: 999,
             backgroundColor: scheme.primary,
-            boxShadow: 'none',
-            '&:hover, &.Mui-active': { boxShadow: 'none' },
-            '&.Mui-focusVisible': { boxShadow: `0 0 0 8px ${alpha(scheme.primary, FOCUS)}` }
+            boxShadow: `0 1px 3px ${alpha(scheme.onSurface, 0.4)}`,
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              backgroundColor: scheme.primary,
+              opacity: 0,
+              transition: 'opacity 150ms ease'
+            },
+            '&:hover::before': { opacity: HOVER },
+            '&.Mui-focusVisible::before': { opacity: FOCUS },
+            '&.Mui-active::before': { opacity: PRESSED },
+            '&.Mui-disabled': { backgroundColor: alpha(scheme.onSurface, 0.38), boxShadow: 'none' }
+          },
+          valueLabel: {
+            backgroundColor: scheme.primary,
+            color: scheme.onPrimary,
+            borderRadius: 999,
+            fontSize: 14,
+            lineHeight: '20px',
+            padding: '3px 8px'
           }
         }
       },
