@@ -1,23 +1,35 @@
 import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import Box from '@mui/material/Box'
 
 import { AppTopBar } from './components/AppTopBar'
 import { NavigationRail } from './components/NavigationRail'
-import { colorVar } from './theme/material-you'
-import { useShell } from './shell/store'
 import { PendingPage } from './pages/PendingPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { useLanguage } from './i18n'
+import { useShell } from './shell/store'
+import { colorVar } from './theme/material-you'
+import { bridge } from './utils/bridge'
 
 export function App(): ReactNode {
   const page = useShell((state) => state.page)
   const setPage = useShell((state) => state.setPage)
-  const isMac = window.heartbeat?.app.platform === 'darwin'
+  const setLanguage = useLanguage((state) => state.setLanguage)
+  const isMac = bridge.app.platform === 'darwin'
+
+  useEffect(() => {
+    void bridge.config
+      .load()
+      .then((bundle) => setLanguage(bundle.config.ui.language))
+      .catch(() => undefined)
+  }, [setLanguage])
 
   return (
     <Box sx={{ display: 'flex', height: '100%', backgroundColor: colorVar('surface') }}>
       <NavigationRail active={page} onSelect={setPage} />
       <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <AppTopBar page={page} isMac={isMac} />
-        {page === 'settings' ? <PendingPage page="settings" hint="服务端 / 推送 / 隐私 / 截图 / 站点文案" /> : null}
+        {page === 'settings' ? <SettingsPage /> : null}
         {page === 'diagnostics' ? <PendingPage page="diagnostics" hint="音乐 / 进程 / 系统负载 / 推送结果" /> : null}
         {page === 'diary' ? <PendingPage page="diary" hint="日记列表 + Markdown 编辑与预览" /> : null}
         {page === 'friends' ? <PendingPage page="friends" hint="友链列表 + 表单" /> : null}

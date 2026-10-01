@@ -5,6 +5,14 @@ import { platformKey } from '../config/paths'
 import { isTemplateTrayIcon, trayIconPath } from './assets'
 import { buildTrayMenuTemplate, type TrayMenuHandlers, type TrayMenuLabels } from './tray-menu'
 
+function loadTrayImage(): Electron.NativeImage {
+  const image = nativeImage.createFromPath(trayIconPath())
+  if (isTemplateTrayIcon()) {
+    image.setTemplateImage(true)
+  }
+  return image
+}
+
 export class TrayController {
   private tray: Tray | null = null
   private menu: Menu | null = null
@@ -18,9 +26,9 @@ export class TrayController {
     if (this.tray) {
       return
     }
-    const image = nativeImage.createFromPath(trayIconPath())
-    if (isTemplateTrayIcon()) {
-      image.setTemplateImage(true)
+    const image = loadTrayImage()
+    if (image.isEmpty()) {
+      logger.warn(`Tray icon is empty at ${trayIconPath()}`)
     }
     this.tray = new Tray(image)
     this.tray.setToolTip('HeartBeat')
