@@ -1,9 +1,24 @@
 import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
+import { CollectorRegistry } from '../src/main/adapters/index'
+import { currentPlatform } from '../src/main/adapters/platform'
+import { runCommand } from '../src/main/adapters/shell'
 import { buildDesktopEntry, commandLine as linuxCommandLine, desktopEntryPath } from '../src/main/app/autostart/linux'
 import { buildPlist, launchctlArgs, plistPath } from '../src/main/app/autostart/macos'
 import { RUN_KEY, registryAddArgs, registryDeleteArgs, registryQueryArgs } from '../src/main/app/autostart/windows'
 import { buildTrayMenuTemplate } from '../src/main/app/tray-menu'
+import { MediaClock } from '../src/main/adapters/media/clock'
+import { parseMetadata, unwrap } from '../src/main/adapters/media/linux'
+import { APP_SCRIPTS, installedAppScripts, parseScriptOutput } from '../src/main/adapters/media/macos'
+import { parseNowPlayingJson } from '../src/main/adapters/media/nowplaying'
+import { preferPlaying } from '../src/main/adapters/media/selection'
+import { encodePowerShell, friendlyAppName, parseSessions } from '../src/main/adapters/media/windows'
+import { ProcessFilter, aggregate, aggregateKey, candidateNames } from '../src/main/adapters/processes/filter'
+import { PrivacyGate } from '../src/main/adapters/privacy'
+import { encodeScreenshot } from '../src/main/adapters/screenshot/index'
+import { cpuPercent, loadAverage, memoryPercent } from '../src/main/adapters/system/index'
 import { configPath, secretsPath } from '../src/main/config/paths'
 import { readJsonFile } from '../src/main/config/read'
 import {
@@ -155,13 +170,217 @@ group('tray menu')
   check('click handlers wired', clicks.join(',') === 'open,quit', clicks.join(','))
 }
 
+group('privacy gate')
+{
+  const gate = new PrivacyGate({ screenshot: true, media: false, processes: true, system: false })
+  check('allows enabled capability', gate.allow('screenshot'))
+  check('blocks disabled capability', !gate.allow('media'))
+  check('blocks disabled system capability', !gate.allow('system'))
+  const seen: string[] = []
+  gate.subscribe((flags) => seen.push(JSON.stringify(flags)))
+  gate.update({ screenshot: false, media: false, processes: false, system: false })
+  check('notifies subscribers', seen.length === 1 && seen[0].includes('"screenshot":false'))
+  check('flags snapshot reflects update', gate.flags.media === false)
+  check('snapshot is a copy', gate.flags !== gate.flags)
+}
+
+group('process filter')
+{
+  const whitelist = new ProcessFilter(['Code', 'Safari'])
+  check('matches a whitelisted name', whitelist.matches({ name: 'Code' }))
+  check('rejects a non-whitelisted name', !whitelist.matches({ name: 'Finder' }))
+  check('full match semantics', !whitelist.matches({ name: 'Code2' }))
+  check('exclude beats whitelist', !whitelist.matches({ name: 'Code Helper' }))
+
+  const collectAll = new ProcessFilter([], undefined, true)
+  check('enabled with collect all', collectAll.enabled)
+  check('accepts an installed app', collectAll.matches({ name: 'Safari', exe: '/Applications/Safari.app/Contents/MacOS/Safari' }))
+  check('rejects a system binary', !collectAll.matches({ name: 'foo', exe: '/usr/libexec/foo' }))
+  check('rejects apple daemons', !collectAll.matches({ name: 'com.apple.WebKit' }))
+  check('rejects kernel task', !collectAll.matches({ name: 'kernel_task' }))
+  check('accepts a bare user-style name', collectAll.matches({ name: 'Obsidian' }))
+  check('rejects a lowercase bare name', !collectAll.matches({ name: 'obsidian' }))
+
+  const disabled = new ProcessFilter([])
+  check('disabled without whitelist', !disabled.enabled)
+  check('never matches when disabled', !disabled.matches({ name: 'Safari' }))
+
+  check(
+    'candidate names dedupe identical basenames',
+    candidateNames({
+      name: 'Code',
+      exe: '/Applications/Code.app/Contents/MacOS/Code',
+      cmdline0: '/Applications/Code.app/Contents/MacOS/Code'
+    }).join(',') === 'Code'
+  )
+  check(
+    'candidate names keep distinct basenames',
+    candidateNames({ name: 'node', exe: '/opt/homebrew/bin/node', cmdline0: '/usr/local/bin/tsx' }).join(',') === 'node,tsx'
+  )
+  check('aggregate key prefers exe basename', aggregateKey({ name: 'Electron', exe: '/opt/homebrew/bin/Code' }) === 'Code')
+  check('aggregate key falls back to name', aggregateKey({ name: 'Electron' }) === 'Electron')
+
+  const aggregated = aggregate(['Safari', 'Code', 'Safari'])
+  check('aggregate counts duplicates', aggregated.some((item) => item.name === 'Safari' && item.count === 2))
+  check('aggregate sorts by name', aggregated.map((item) => item.name).join(',') === 'Code,Safari')
+}
+
+group('media selection and clock')
+{
+  const playing = preferPlaying([
+    { ...blankMedia(), state: 'paused', title: 'a' },
+    { ...blankMedia(), state: 'playing', title: 'b' }
+  ])
+  check('prefers playing over paused', playing.title === 'b')
+  check('returns idle for empty candidates', preferPlaying([]).state === 'idle')
+
+  const clock = new MediaClock()
+  const first = clock.decorate({ ...blankMedia(), state: 'playing', title: 'T', position_ms: 0, duration_ms: 200000 })
+  check('anchors a zero position', first.position_ms === 0)
+  const later = clock.decorate({ ...blankMedia(), state: 'playing', title: 'T', position_ms: 0, duration_ms: 200000 })
+  check('interpolates while playing', (later.position_ms ?? 0) >= 0)
+  const clamped = clock.decorate({ ...blankMedia(), state: 'playing', title: 'T', position_ms: 999999, duration_ms: 1000 })
+  check('clamps to duration', clamped.position_ms === 1000)
+}
+
+group('media / macOS')
+{
+  const idle = parseScriptOutput('idle', 'Music')
+  check('idle maps to idle', idle.state === 'idle')
+  const sep = '\u001f'
+  const row = parseScriptOutput(['playing', 'Song', 'Artist', 'Album', '210000', '1000'].join(sep), 'Music')
+  check('parses playing state', row.state === 'playing')
+  check('parses metadata', row.title === 'Song' && row.artist === 'Artist' && row.album === 'Album')
+  check('parses timings', row.duration_ms === 210000 && row.position_ms === 1000)
+  check('app is the queried player', row.app === 'Music')
+  const spotify = parseScriptOutput(['playing', 'S', 'A', 'Al', '1000', '10', 'https://cover/x.jpg'].join(sep), 'Spotify')
+  check('captures spotify artwork url', spotify.cover_url === 'https://cover/x.jpg')
+  check('truncated output is rejected', parseScriptOutput('playing\u001fSong', 'Music').state === 'idle')
+  check('scripts avoid the reserved st identifier', APP_SCRIPTS.every((entry) => !/\bst\b/.test(entry.script)))
+  check('scripts pair state with pstate variable', APP_SCRIPTS.every((entry) => entry.script.includes('set pstate to player state as text')))
+}
+
+group('media / nowplaying-cli')
+{
+  const empty = parseNowPlayingJson('')
+  check('empty output is idle', empty.state === 'idle')
+  const playing = parseNowPlayingJson(
+    JSON.stringify({
+      title: 'Song',
+      artist: 'Artist',
+      album: 'Album',
+      playbackRate: 1,
+      duration: 200,
+      elapsedTime: 12,
+      clientBundleIdentifier: 'com.spotify.client',
+      artworkData: Buffer.from('cover').toString('base64')
+    })
+  )
+  check('playing rate maps to playing', playing.state === 'playing')
+  check('seconds convert to ms', playing.duration_ms === 200000 && playing.position_ms === 12000)
+  check('bundle id maps to app name', playing.app === 'Spotify')
+  check('artwork decodes to bytes', playing.cover_bytes?.toString() === 'cover')
+  const paused = parseNowPlayingJson(JSON.stringify({ title: 'S', playbackRate: 0 }))
+  check('zero rate maps to idle', paused.state === 'idle')
+  check('unknown bundle falls back to last segment', parseNowPlayingJson(JSON.stringify({ title: 'S', playbackRate: 1, clientBundleIdentifier: 'com.foo.Bar' })).app === 'Bar')
+  check('missing title and artist is idle', parseNowPlayingJson(JSON.stringify({ playbackRate: 1 })).state === 'idle')
+  check('broken json is idle', parseNowPlayingJson('{oops').state === 'idle')
+}
+
+group('media / Windows GSMTC')
+{
+  const rows = parseSessions(
+    JSON.stringify([
+      { app: 'Spotify.exe', status: 'Playing', title: 'A', artist: 'B', album: 'C', positionMs: 100, endMs: 200 },
+      { app: 'Chrome.exe', status: 'Closed', title: '', positionMs: 0, endMs: 0 }
+    ])
+  )
+  check('drops idle sessions without a title', rows.length === 1)
+  check('maps playing status', rows[0]?.state === 'playing')
+  check('maps app id to friendly name', rows[0]?.app === 'Spotify')
+  check('single object payload is accepted', parseSessions(JSON.stringify({ status: 'Playing', title: 'A' })).length === 1)
+  check('broken json yields nothing', parseSessions('nope').length === 0)
+  check('unknown app id falls back to package', friendlyAppName('Foo.Bar!App') === 'Foo.Bar')
+  const encoded = Buffer.from(encodePowerShell('Get-Date'), 'base64').toString('utf16le')
+  check('powershell script is utf16 base64', encoded === 'Get-Date')
+}
+
+group('media / MPRIS')
+{
+  const variant = (value: unknown) => ({ signature: 's', value })
+  check('unwraps nested variants', unwrap(variant(variant('x'))) === 'x')
+  const info = parseMetadata(
+    {
+      'xesam:title': variant('Song'),
+      'xesam:artist': variant([variant('A'), variant('B')]),
+      'xesam:album': variant('Album'),
+      'mpris:length': variant(180000000),
+      'mpris:artUrl': variant('file:///cover.png')
+    },
+    'Playing',
+    'spotify',
+    variant(30000000)
+  )
+  check('maps playing status', info.state === 'playing')
+  check('joins artist array', info.artist === 'A, B')
+  check('microseconds convert to ms', info.duration_ms === 180000 && info.position_ms === 30000)
+  check('keeps artwork url', info.cover_url === 'file:///cover.png')
+  check('stopped status is idle', parseMetadata({}, 'Stopped', 'x').state === 'idle')
+}
+
+group('system load')
+{
+  check('cpu percent from deltas', Math.round(cpuPercent({ idle: 0, total: 0 }, { idle: 50, total: 100 })) === 50)
+  check('cpu percent with no previous sample', cpuPercent(null, { idle: 1, total: 2 }) === 0)
+  check('cpu percent clamps', cpuPercent({ idle: 0, total: 0 }, { idle: 100, total: 100 }) === 0)
+  check('memory percent', Math.round(memoryPercent(1000, 250)) === 75)
+  check('memory percent guards zero total', memoryPercent(0, 0) === 0)
+  check('windows reports no load average', loadAverage('windows').length === 0)
+  check('macos reports three load averages', loadAverage('macos').length === 3)
+}
+
+group('screenshot encoding')
+{
+  const encoded = await encodeScreenshot(await syntheticScreen(400, 200), { blurRadius: 10, scale: 0.5, quality: 75 })
+  check('halves both dimensions', encoded.width === 200 && encoded.height === 100, `${encoded.width}x${encoded.height}`)
+  check('emits a webp payload', encoded.webp.subarray(0, 4).toString() === 'RIFF' && encoded.webp.subarray(8, 12).toString() === 'WEBP')
+  const untouched = await encodeScreenshot(await syntheticScreen(100, 100), { blurRadius: 0, scale: 1, quality: 75 })
+  check('zero blur keeps the frame size', untouched.width === 100 && untouched.height === 100)
+  check('blur softens detail', (await encodeScreenshot(await syntheticScreen(200, 200), { blurRadius: 40, scale: 1, quality: 75 })).webp.length > 0)
+}
+
+async function syntheticScreen(width: number, height: number): Promise<Buffer> {
+  const sharpModule = await import('sharp')
+  const pixels = Buffer.alloc(width * height * 3)
+  for (let index = 0; index < width * height; index += 1) {
+    pixels[index * 3] = (index * 7) % 255
+    pixels[index * 3 + 1] = (index * 13) % 255
+    pixels[index * 3 + 2] = (index * 29) % 255
+  }
+  return sharpModule.default(pixels, { raw: { width, height, channels: 3 } }).png().toBuffer()
+}
+
+function blankMedia() {
+  return {
+    state: 'idle' as const,
+    title: null,
+    artist: null,
+    album: null,
+    app: null,
+    cover_url: null,
+    cover_bytes: null,
+    position_ms: null,
+    duration_ms: null
+  }
+}
+
 if (process.argv.includes('--live')) {
   group('live config (read only)')
   const configFile = configPath()
   const secretsFile = secretsPath()
   check('client.json exists', existsSync(configFile), configFile)
+  const live = appConfigSchema.parse(readJsonFile(configFile))
   if (existsSync(configFile)) {
-    const live = appConfigSchema.parse(readJsonFile(configFile))
     check('client_id present', live.client_id.length > 0, live.client_id)
     check('setup_completed', live.setup_completed)
     check('base_url', live.server.base_url.length > 0, live.server.base_url)
@@ -170,10 +389,58 @@ if (process.argv.includes('--live')) {
   }
   check('client.secrets.json exists', existsSync(secretsFile), secretsFile)
   if (existsSync(secretsFile)) {
-    const live = secretsSchema.parse(readJsonFile(secretsFile))
-    check('api_key present', live.api_key.length > 0, `length=${live.api_key.length}`)
-    check('github_token present', live.github_token.length > 0, `length=${live.github_token.length}`)
+    const secrets = secretsSchema.parse(readJsonFile(secretsFile))
+    check('api_key present', secrets.api_key.length > 0, `length=${secrets.api_key.length}`)
+    check('github_token present', secrets.github_token.length > 0, `length=${secrets.github_token.length}`)
   }
+
+  group('live collectors')
+  if (currentPlatform() === 'macos') {
+    const installed = installedAppScripts()
+    check('at least one player script is usable', installed.length > 0, installed.map((entry) => entry.app).join(','))
+    for (const entry of installed) {
+      const compiled = await runCommand(
+        'osacompile',
+        ['-e', entry.script, '-o', join(tmpdir(), `heartbeat-${entry.app}.scpt`)],
+        8000
+      )
+      check(
+        `${entry.app} applescript compiles`,
+        compiled.ok,
+        compiled.ok ? '' : compiled.stderr.trim().split('\n')[0]
+      )
+    }
+  }
+  const registry = new CollectorRegistry({
+    processWhitelist: live.process_whitelist,
+    processCollectAll: live.process_collect_all,
+    screenshot: {
+      blurRadius: live.screenshot.blur_radius,
+      scale: live.screenshot.scale,
+      quality: live.screenshot.quality
+    }
+  })
+  const openGate = new PrivacyGate({ screenshot: true, media: true, processes: true, system: true })
+  const shutGate = new PrivacyGate({ screenshot: false, media: false, processes: false, system: false })
+
+  const shot = await registry.collectScreenshot(openGate)
+  check('screenshot captured and encoded', shot !== null, shot ? `${shot.width}x${shot.height} ${shot.webp.length}B` : 'capture unavailable')
+  check('screenshot blocked by privacy gate', (await registry.collectScreenshot(shutGate)) === null)
+
+  const media = await registry.collectMedia(openGate)
+  process.stdout.write(`  info media state=${media?.state} title=${media?.title ?? '-'} app=${media?.app ?? '-'} pos=${media?.position_ms ?? '-'}/${media?.duration_ms ?? '-'} cover=${media?.cover_bytes ? `${media.cover_bytes.length}B` : media?.cover_url ?? '-'}\n`)
+  check('media collection returns a value', media !== null)
+  check('media blocked by privacy gate', (await registry.collectMedia(shutGate)) === null)
+
+  const processes = await registry.collectProcesses(openGate)
+  process.stdout.write(`  info processes=${processes.length} sample=${processes.slice(0, 5).map((item) => `${item.name}x${item.count}`).join(' ')}\n`)
+  check('process collection returns a list', Array.isArray(processes))
+  check('process collection respects the gate', (await registry.collectProcesses(shutGate)).length === 0)
+
+  const system = await registry.collectSystem(openGate)
+  process.stdout.write(`  info system cpu=${system?.cpu_percent} mem=${system?.memory_percent} load=${JSON.stringify(system?.load_avg)}\n`)
+  check('system load collected', system !== null && system.memory_percent > 0)
+  check('system blocked by privacy gate', (await registry.collectSystem(shutGate)) === null)
 }
 
 process.stdout.write(`\n${failures === 0 ? 'smoke: all checks passed' : `smoke: ${failures} failing checks`}\n`)
