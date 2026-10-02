@@ -15,9 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from heartbeat.logging_util import setup_logging
-from heartbeat.server.config import get_settings
+from heartbeat.server.config import Settings, get_settings
 from heartbeat.server.db import init_db
 from heartbeat.server.envelope import ApiError, error_body
+from heartbeat.server.middleware import StaticGuardMiddleware
 from heartbeat.server.routers import (
     background,
     cover,
@@ -31,10 +32,17 @@ from heartbeat.server.routers import (
     status,
 )
 from heartbeat.server.services.scheduler import create_scheduler
+from heartbeat.server.services.static_access import StaticAccessPolicy
 
 logger = logging.getLogger(__name__)
 
 DESCRIPTION = "HeartBeat FastAPI server"
+
+DOCS_ROUTES: dict[str, str] = {
+    "docs_url": "/docs",
+    "redoc_url": "/redoc",
+    "openapi_url": "/openapi.json",
+}
 
 
 @asynccontextmanager
@@ -56,8 +64,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     """Build the FastAPI application with routes, middleware and handlers."""
     settings = get_settings()
-    app = FastAPI(title=DESCRIPTION, lifespan=lifespan)
+    app = FastAPI(title=DESCRIPTION, lifespan=lifespan, **_docs_kwargs(settings))
     _register_exception_handlers(app)
+    _register_static(app, StaticAccessPolicy(settings))
     _register_cors(app, settings.cors_origins)
     app.include_router(heartbeat.router)
     app.include_router(screenshot.router)
@@ -69,9 +78,21 @@ def create_app() -> FastAPI:
     app.include_router(messages.router)
     app.include_router(github.router)
     app.include_router(site.router)
-    app.mount("/static", StaticFiles(directory=str(settings.data_dir)), name="static")
     _register_frontend(app)
     return app
+
+
+def _docs_kwargs(settings: Settings) -> dict[str, str | None]:
+    """Return docs route arguments, disabled unless the operator opts in."""
+    return {key: (path if settings.docs_enabled else None) for key, path in DOCS_ROUTES.items()}
+
+
+def _register_static(app: FastAPI, policy: StaticAccessPolicy) -> None:
+    """Mount only the public media directories and guard the static prefix."""
+    for mount_path, directory in policy.public_mounts().items():
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        app.mount(mount_path, StaticFiles(directory=directory), name=mount_path.strip("/"))
+    app.add_middleware(StaticGuardMiddleware, policy=policy)
 
 
 def _register_frontend(app: FastAPI) -> None:

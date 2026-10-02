@@ -22,6 +22,7 @@ server/
 ├── main.py            应用装配与 lifespan
 ├── config.py          设置与密钥
 ├── dependencies.py    会话、鉴权依赖
+├── middleware.py      请求守卫
 ├── models.py          SQLModel 表
 ├── schemas.py         Pydantic 出入参
 ├── routers/
@@ -33,6 +34,7 @@ server/
 │   └── github.py
 ├── services/
 │   ├── github_cache.py
+│   ├── static_access.py
 │   └── cleanup.py
 └── db.py              引擎与建表
 ```
@@ -185,6 +187,22 @@ async def require_api_key(key: str = Depends(api_key_header)) -> str:
 
 密钥从环境变量或本地配置读，不进 Git。比较用 `secrets.compare_digest`。GitHub PAT 由客户端推到 `POST /github/token`，落 `data/secrets.json`，响应与日志均不得回显。
 
+## 静态资源与暴露面
+
+`data_dir` 不再整体挂载到 `/static`，只逐个挂载公开图片目录。`heartbeat.db`（含留言 IP 与归属地）和 `secrets.json`（`api_key`、`github_token`）拿不到。
+
+| 路径 | 来源 | 说明 |
+|------|------|------|
+| `/` | `frontend/dist` | `app.frontend()` 挂载的 SPA |
+| `/static/snapshots` | `data/snapshots` | 模糊后的截图 |
+| `/static/backgrounds` | `data/backgrounds` | 站点背景 |
+| `/static/covers` | `data/covers` | 专辑封面 |
+| 其它 `/static/**` | 无 | 一律 404 |
+
+`StaticAccessPolicy` 决定哪些路径可公开：首段必须在 `PUBLIC_DIR_NAMES` 内，文件名不得是 `BLOCKED_NAMES`，后缀必须在 `PUBLIC_SUFFIXES`（图片）内，含 `..` 或点开头一律拒绝。`StaticGuardMiddleware` 在路由前拦截，命中写 warning 日志。新增公开目录要同时改这两个集合。
+
+`/docs`、`/redoc`、`/openapi.json` 默认不注册（FastAPI 的 `docs_url` 等传 `None`），`HEARTBEAT_DOCS_ENABLED=true` 才打开。
+
 ## 数据保留
 
 - 心跳默认保留 90 天，可配
@@ -202,6 +220,7 @@ async def require_api_key(key: str = Depends(api_key_header)) -> str:
 | `online_timeout_ms` | 默认 90000 |
 | `github_login` | 热力图目标用户，`secrets.json` 或环境变量 |
 | `cors_origains` | 开发期 Vite 源 |
+| `docs_enabled` | 默认 false，为 true 才注册 `/docs`、`/redoc`、`/openapi.json` |
 
 ## 依赖
 

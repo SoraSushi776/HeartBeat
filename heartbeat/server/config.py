@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     default_client_id: str = ""
     screenshot_max_bytes: int = 512 * 1024
     screenshot_upload_ttl_s: int = 60
+    docs_enabled: bool = False
 
     def resolved_database_url(self) -> str:
         """Return configured database URL or default file under data_dir."""
