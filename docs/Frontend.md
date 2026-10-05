@@ -28,15 +28,20 @@ frontend/
 │   ├── api/           fetch 与 EventSource 封装
 │   ├── stores/        状态（可选 Pinia）
 │   ├── styles/        Material You 变量与主题
+│   ├── utils/         格式化、URL、Markdown、HTML 清洗等纯函数
 │   └── components/
 │       ├── LiveStatus.vue
 │       ├── MediaCard.vue
+│       ├── TagsCard.vue
 │       ├── ProcessCloud.vue
 │       ├── SnapshotLightbox.vue
 │       ├── GithubPanel.vue
 │       ├── Heatmap.vue
 │       ├── DiaryTimeline.vue
-│       └── FriendLinks.vue
+│       ├── MarkdownBody.vue
+│       ├── MessageBoard.vue
+│       ├── FriendLinks.vue
+│       └── SiteFooter.vue
 └── dist/              构建产物，不进 Git
 ```
 
@@ -105,7 +110,9 @@ Flex Chip，不是 Wordle 词云。
 
 ### 日记时间轴
 
-左侧轴线用 `::before`，节点圆点加右侧卡片。移动端改卡片堆叠。按年月分组粘性标题。Vue 用 `TransitionGroup` 做进场。样式独立 CSS，不内联。
+左侧月份导航栏 + 最新日记卡 + 按月分组的折叠列表，全文在 dialog 里阅读。
+
+正文是 Markdown，由 `MarkdownBody.vue` 经 markdown-it 渲染后再过 `sanitizeHtml` 才落到 `v-html`：`html: false` 关闭裸 HTML，开 `linkify` 与 `breaks`，外链统一补 `target="_blank" rel="noopener noreferrer"`。列表摘要与全文搜索先 `stripMarkdown` 剥掉标记，避免摘要里露出 `#`、`**`。排版样式统一写在 `styles/base.css` 的 `.md-body` 上，因为 `v-html` 的子节点拿不到 scoped 属性。
 
 ### 截图弹窗
 

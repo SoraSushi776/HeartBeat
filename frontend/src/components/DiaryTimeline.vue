@@ -2,6 +2,8 @@
 import { computed, nextTick, ref, watch } from "vue"
 import { useDashboard } from "../stores/dashboard"
 import { formatTs, monthLabel } from "../utils/format"
+import { stripMarkdown } from "../utils/markdown"
+import MarkdownBody from "./MarkdownBody.vue"
 import type { Diary } from "../types/protocol"
 
 const store = useDashboard()
@@ -41,7 +43,7 @@ const filtered = computed(() => {
     if (!q) {
       return true
     }
-    const hay = `${item.title}\n${item.content}`.toLowerCase()
+    const hay = `${item.title}\n${stripMarkdown(item.content)}`.toLowerCase()
     return hay.includes(q)
   })
 })
@@ -100,7 +102,7 @@ const latestPreview = computed(() => {
   if (!latest.value) {
     return ""
   }
-  return clampText(latest.value.content, 120)
+  return clampText(stripMarkdown(latest.value.content), 120)
 })
 
 function clampText(text: string, max: number): string {
@@ -109,7 +111,7 @@ function clampText(text: string, max: number): string {
 }
 
 function preview(item: Diary): string {
-  return clampText(item.content, 64)
+  return clampText(stripMarkdown(item.content), 64)
 }
 
 function setMonthRef(label: string, el: unknown): void {
@@ -337,7 +339,7 @@ watch([query, activeTag], () => {
             <span v-if="expanded.mood" class="chip">{{ expanded.mood }}</span>
             <span v-for="tag in expanded.tags ?? []" :key="tag" class="chip">{{ tag }}</span>
           </div>
-          <div class="dialog-body">{{ expanded.content }}</div>
+          <MarkdownBody :content="expanded.content" />
         </article>
       </div>
     </Transition>
@@ -680,10 +682,8 @@ watch([query, activeTag], () => {
   margin: 0 0 4px;
 }
 
-.dialog-body {
+.dialog :deep(.md-body) {
   margin-top: 14px;
-  line-height: 1.75;
-  white-space: pre-wrap;
 }
 
 @media (max-width: 800px) {

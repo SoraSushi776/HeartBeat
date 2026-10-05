@@ -96,6 +96,127 @@ a:hover {
   color: var(--md-sys-color-on-surface);
 }
 
+.md-body {
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.md-body > :first-child {
+  margin-top: 0;
+}
+
+.md-body > :last-child {
+  margin-bottom: 0;
+}
+
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  margin: 22px 0 10px;
+  font: var(--md-sys-typescale-title);
+  line-height: 1.35;
+}
+
+.md-body h1 {
+  font-size: 1.35rem;
+}
+
+.md-body h2 {
+  font-size: 1.2rem;
+}
+
+.md-body h3 {
+  font-size: 1.08rem;
+}
+
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  font-size: 1rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-body p {
+  margin: 10px 0;
+}
+
+.md-body ul,
+.md-body ol {
+  margin: 10px 0;
+  padding-inline-start: 22px;
+}
+
+.md-body li {
+  margin: 4px 0;
+}
+
+.md-body li > ul,
+.md-body li > ol {
+  margin: 4px 0;
+}
+
+.md-body blockquote {
+  margin: 12px 0;
+  padding: 2px 0 2px 12px;
+  border-inline-start: 3px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-body code {
+  padding: 1px 5px;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container-high);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+}
+
+.md-body pre {
+  margin: 12px 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-high);
+  line-height: 1.6;
+}
+
+.md-body pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.85rem;
+}
+
+.md-body img {
+  margin: 10px 0;
+  border-radius: var(--md-sys-shape-corner-medium);
+}
+
+.md-body hr {
+  margin: 18px 0;
+  border: none;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md-body table {
+  width: 100%;
+  margin: 14px 0;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.md-body th,
+.md-body td {
+  padding: 7px 10px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  text-align: start;
+}
+
+.md-body th {
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 70%, transparent);
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.18s ease;
