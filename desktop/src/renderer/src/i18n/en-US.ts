@@ -117,7 +117,7 @@ export const enUS: Dictionary = {
   'diary.delete_confirm': 'Delete this entry?',
   'diary.empty': 'No entries yet',
   'diary.untitled': 'Untitled',
-  'diary.markdown_hint': 'Supports headings, lists, quotes, bold, italic, inline code and links',
+  'diary.markdown_hint': 'Supports Markdown: headings, lists, quotes, code blocks, tables, images, bold, italic and links',
   'diary.created': 'Created',
   'diary.updated': 'Updated',
   'diary.select_hint': 'Pick an entry on the left, or create one',

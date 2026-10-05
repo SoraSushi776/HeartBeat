@@ -115,7 +115,7 @@ export const zhCN = {
   'diary.delete_confirm': '删除这篇日记？',
   'diary.empty': '还没有日记',
   'diary.untitled': '未命名',
-  'diary.markdown_hint': '支持标题、列表、引用、加粗、斜体、行内代码与链接',
+  'diary.markdown_hint': '支持 Markdown：标题、列表、引用、代码块、表格、图片、加粗、斜体与链接',
   'diary.created': '创建于',
   'diary.updated': '更新于',
   'diary.select_hint': '从左侧选择一篇日记，或新建一篇',

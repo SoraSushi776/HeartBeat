@@ -14,6 +14,7 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { MarkdownPreview } from '../components/MarkdownPreview'
 import { PageScaffold } from '../components/PageScaffold'
 import { useHeaderActions } from '../shell/header'
 import { StateBlock } from '../components/StateBlock'
@@ -22,7 +23,6 @@ import { colorVar } from '../theme/material-you'
 import { bridge, errorMessage } from '../utils/bridge'
 import { formatDate, formatRelative } from '../utils/format'
 import { useAsync } from '../utils/hooks'
-import { markdownToHtml } from '../utils/markdown'
 import type { DiaryItem } from '@shared/ipc'
 
 interface Draft {
@@ -69,8 +69,6 @@ export function DiaryPage(): ReactNode {
       setDraft(toDraft(items[0]))
     }
   }, [items, draft.id, draft.title, draft.content])
-
-  const previewHtml = useMemo(() => markdownToHtml(draft.content), [draft.content])
 
   const save = async (): Promise<void> => {
     setBusy(true)
@@ -261,29 +259,7 @@ export function DiaryPage(): ReactNode {
                 </Typography>
               </>
             ) : (
-              <Box
-                sx={{
-                  minHeight: 360,
-                  px: 1,
-                  '& h1, & h2, & h3': { margin: '12px 0 6px' },
-                  '& p': { margin: '6px 0', lineHeight: 1.7 },
-                  '& ul, & ol': { margin: '6px 0', paddingInlineStart: '24px' },
-                  '& blockquote': {
-                    margin: '8px 0',
-                    paddingInlineStart: '12px',
-                    borderInlineStart: `3px solid ${colorVar('outline-variant')}`,
-                    color: colorVar('on-surface-variant')
-                  },
-                  '& code': {
-                    backgroundColor: colorVar('surface-container-highest'),
-                    borderRadius: '4px',
-                    padding: '1px 4px'
-                  },
-                  '& a': { color: colorVar('primary') },
-                  '& hr': { border: 'none', borderTop: `1px solid ${colorVar('outline-variant')}` }
-                }}
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
+              <MarkdownPreview content={draft.content} />
             )}
 
             {draft.id !== null ? (
