@@ -111,6 +111,7 @@ Flex Chip，不是 Wordle 词云。
 ### 日记时间轴
 
 左侧月份导航栏 + 最新日记卡 + 按月分组的折叠列表，全文在 dialog 里阅读。
+全文弹窗的分享按钮复制 `/#/diary/{id}` 绝对链接。访问链接时按 ID 请求单篇日记，不依赖时间轴首批列表；关闭弹窗返回日记页。
 
 正文是 Markdown，由 `MarkdownBody.vue` 经 markdown-it 渲染后再过 `sanitizeHtml` 才落到 `v-html`：`html: false` 关闭裸 HTML，开 `linkify` 与 `breaks`，外链统一补 `target="_blank" rel="noopener noreferrer"`。列表摘要与全文搜索先 `stripMarkdown` 剥掉标记，避免摘要里露出 `#`、`**`。排版样式统一写在 `styles/base.css` 的 `.md-body` 上，因为 `v-html` 的子节点拿不到 scoped 属性。
 

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue"
+import { computed, nextTick, onUnmounted, ref, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import { ApiRequestError, fetchDiary } from "../api/http"
 import { useDashboard } from "../stores/dashboard"
 import { formatTs, monthLabel } from "../utils/format"
 import { stripMarkdown } from "../utils/markdown"
@@ -7,13 +9,22 @@ import MarkdownBody from "./MarkdownBody.vue"
 import type { Diary } from "../types/protocol"
 
 const store = useDashboard()
+const route = useRoute()
+const router = useRouter()
 const activeMonth = ref<string | null>(null)
 const loadingMonth = ref<string | null>(null)
-const expandedId = ref<number | null>(null)
+const selectedDiary = ref<Diary | null>(null)
+const demoExpanded = ref<Diary | null>(null)
+const detailStatus = ref<"idle" | "loading" | "ready" | "invalid" | "not-found" | "error">("idle")
+const shareStatus = ref<"idle" | "copied" | "manual">("idle")
 const closeBtn = ref<HTMLButtonElement | null>(null)
+const shareInput = ref<HTMLInputElement | null>(null)
 const query = ref("")
 const activeTag = ref("")
 const monthRefs = new Map<string, HTMLElement>()
+let requestVersion = 0
+let dialogEffectsActive = false
+let previousOverflow = ""
 
 const allTags = computed(() => {
   const set = new Set<string>()
@@ -93,10 +104,41 @@ const activeItems = computed(() => {
   return group?.items ?? []
 })
 
-const expanded = computed(() => {
-  const all = store.diaries.value
-  return all.find((item) => item.id === expandedId.value) ?? null
+const cachedDiary = computed(() => {
+  const id = parseDiaryId(route.params.id)
+  if (route.name !== "diary-entry" || id === null || store.diariesAreDemo.value) {
+    return null
+  }
+  return store.diaries.value.find((item) => item.id === id) ?? null
 })
+
+const showingCached = computed(() =>
+  selectedDiary.value === null &&
+  cachedDiary.value !== null &&
+  (detailStatus.value === "error" || detailStatus.value === "not-found"),
+)
+
+const expanded = computed(() =>
+  selectedDiary.value ?? (showingCached.value ? cachedDiary.value : null) ?? demoExpanded.value,
+)
+const showDialog = computed(() => route.name === "diary-entry" || demoExpanded.value !== null)
+
+const shareUrl = computed(() => {
+  if (route.name !== "diary-entry" || detailStatus.value !== "ready" || !selectedDiary.value) {
+    return ""
+  }
+  const href = router.resolve({ name: "diary-entry", params: { id: selectedDiary.value.id } }).href
+  return new URL(href, window.location.href).href
+})
+
+const detailMessage = computed(() => ({
+  idle: "日记加载失败，请稍后重试。",
+  loading: "正在加载日记…",
+  ready: "",
+  invalid: "日记链接无效。",
+  "not-found": "这篇日记不存在或已被删除。",
+  error: "日记加载失败，请稍后重试。",
+})[detailStatus.value])
 
 const latestPreview = computed(() => {
   if (!latest.value) {
@@ -123,11 +165,11 @@ function setMonthRef(label: string, el: unknown): void {
 async function toggleMonth(label: string): Promise<void> {
   if (activeMonth.value === label) {
     activeMonth.value = null
-    expandedId.value = null
+    demoExpanded.value = null
     return
   }
   activeMonth.value = label
-  expandedId.value = null
+  demoExpanded.value = null
   loadingMonth.value = label
   await nextTick()
   window.setTimeout(() => {
@@ -144,12 +186,92 @@ function jumpToMonth(label: string): void {
   }, 30)
 }
 
+/** 打开日记，演示条目仅在本地展示。 */
 function openEntry(item: Diary): void {
-  expandedId.value = item.id
+  if (store.diariesAreDemo.value) {
+    demoExpanded.value = item
+    return
+  }
+  void router.push({
+    name: "diary-entry",
+    params: { id: item.id },
+    state: { heartbeatDiaryFromList: true },
+  })
 }
 
+/** 关闭日记并返回时间轴。 */
 function closeEntry(): void {
-  expandedId.value = null
+  if (demoExpanded.value) {
+    demoExpanded.value = null
+    return
+  }
+  if (window.history.state?.heartbeatDiaryFromList === true) {
+    router.back()
+    return
+  }
+  void router.replace({ name: "diary" })
+}
+
+/** 解析分享链接中的日记 id。 */
+function parseDiaryId(raw: unknown): number | null {
+  if (typeof raw !== "string" || !/^[1-9]\d*$/.test(raw)) {
+    return null
+  }
+  const id = Number(raw)
+  return Number.isSafeInteger(id) ? id : null
+}
+
+/** 从服务端读取指定日记并忽略过期响应。 */
+async function loadSelectedDiary(id: number): Promise<void> {
+  const version = ++requestVersion
+  selectedDiary.value = null
+  detailStatus.value = "loading"
+  try {
+    const diary = await fetchDiary(id)
+    if (version !== requestVersion) {
+      return
+    }
+    selectedDiary.value = diary
+    detailStatus.value = "ready"
+  } catch (error) {
+    if (version !== requestVersion) {
+      return
+    }
+    detailStatus.value = error instanceof ApiRequestError && error.status === 404 ? "not-found" : "error"
+  }
+}
+
+/** 重新加载当前分享链接。 */
+function retryEntry(): void {
+  const id = parseDiaryId(route.params.id)
+  if (id !== null) {
+    void loadSelectedDiary(id)
+  }
+}
+
+/** 复制分享链接，失败时展示可手动复制的地址。 */
+async function copyShareLink(): Promise<void> {
+  const url = shareUrl.value
+  if (!url) {
+    return
+  }
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard unavailable")
+    }
+    await navigator.clipboard.writeText(url)
+    if (url === shareUrl.value) {
+      shareStatus.value = "copied"
+    }
+  } catch {
+    if (url !== shareUrl.value) {
+      return
+    }
+    shareStatus.value = "manual"
+    await nextTick()
+    shareInput.value?.focus()
+    shareInput.value?.select()
+  }
 }
 
 function clearFilters(): void {
@@ -157,26 +279,63 @@ function clearFilters(): void {
   activeTag.value = ""
 }
 
+/** 按 Escape 关闭日记弹窗。 */
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape") {
     closeEntry()
   }
 }
 
-watch(expanded, async (value) => {
-  document.body.style.overflow = value ? "hidden" : ""
-  if (value) {
-    await nextTick()
-    closeBtn.value?.focus()
-    window.addEventListener("keydown", onKeydown)
+/** 清理弹窗的滚动限制与键盘监听。 */
+function removeDialogEffects(): void {
+  if (!dialogEffectsActive) {
     return
   }
+  document.body.style.overflow = previousOverflow
   window.removeEventListener("keydown", onKeydown)
-})
+  dialogEffectsActive = false
+}
+
+watch(() => route.params.id, (raw) => {
+  requestVersion += 1
+  selectedDiary.value = null
+  demoExpanded.value = null
+  shareStatus.value = "idle"
+  if (route.name !== "diary-entry") {
+    detailStatus.value = "idle"
+    return
+  }
+  const id = parseDiaryId(raw)
+  if (id === null) {
+    detailStatus.value = "invalid"
+    return
+  }
+  void loadSelectedDiary(id)
+}, { immediate: true })
+
+watch(showDialog, async (value) => {
+  removeDialogEffects()
+  if (!value) {
+    return
+  }
+  previousOverflow = document.body.style.overflow
+  document.body.style.overflow = "hidden"
+  window.addEventListener("keydown", onKeydown)
+  dialogEffectsActive = true
+  await nextTick()
+  if (showDialog.value) {
+    closeBtn.value?.focus()
+  }
+}, { immediate: true })
 
 watch([query, activeTag], () => {
   activeMonth.value = null
-  expandedId.value = null
+  demoExpanded.value = null
+})
+
+onUnmounted(() => {
+  requestVersion += 1
+  removeDialogEffects()
 })
 </script>
 
@@ -318,7 +477,7 @@ watch([query, activeTag], () => {
   <Teleport to="body">
     <Transition name="fade">
       <div
-        v-if="expanded"
+        v-if="showDialog"
         class="overlay"
         role="dialog"
         aria-modal="true"
@@ -328,18 +487,53 @@ watch([query, activeTag], () => {
         <article class="dialog">
           <header class="dialog-head">
             <div>
-              <h3>{{ expanded.title }}</h3>
-              <p class="muted">{{ formatTs(expanded.created_ts) }}</p>
+              <h3>{{ expanded?.title ?? "日记" }}</h3>
+              <p v-if="expanded" class="muted">{{ formatTs(expanded.created_ts) }}</p>
             </div>
-            <button ref="closeBtn" type="button" class="btn btn-ghost" @click="closeEntry">
-              关闭
-            </button>
+            <div class="dialog-actions">
+              <button
+                v-if="shareUrl"
+                type="button"
+                class="btn btn-ghost"
+                aria-label="复制日记分享链接"
+                @click="copyShareLink"
+              >
+                复制分享链接
+              </button>
+              <button ref="closeBtn" type="button" class="btn btn-ghost" @click="closeEntry">
+                关闭
+              </button>
+            </div>
           </header>
-          <div class="tags">
-            <span v-if="expanded.mood" class="chip">{{ expanded.mood }}</span>
-            <span v-for="tag in expanded.tags ?? []" :key="tag" class="chip">{{ tag }}</span>
+          <p v-if="shareStatus === 'copied'" class="share-status" role="status">分享链接已复制</p>
+          <template v-else-if="shareStatus === 'manual'">
+            <p class="share-status" role="status">无法自动复制，请手动复制下方链接。</p>
+            <input
+              ref="shareInput"
+              class="share-input"
+              type="text"
+              readonly
+              :value="shareUrl"
+              aria-label="日记分享链接"
+            />
+          </template>
+          <div v-if="showingCached" class="cached-notice" role="status">
+            <p>无法读取最新内容，当前显示已加载的日记。</p>
+            <button type="button" class="btn btn-ghost" @click="retryEntry">重试</button>
           </div>
-          <MarkdownBody :content="expanded.content" />
+          <div v-if="expanded">
+            <div class="tags">
+              <span v-if="expanded.mood" class="chip">{{ expanded.mood }}</span>
+              <span v-for="tag in expanded.tags ?? []" :key="tag" class="chip">{{ tag }}</span>
+            </div>
+            <MarkdownBody :content="expanded.content" />
+          </div>
+          <div v-else class="dialog-state" role="status" aria-live="polite">
+            <p>{{ detailMessage }}</p>
+            <button v-if="detailStatus === 'error'" type="button" class="btn btn-ghost" @click="retryEntry">
+              重试
+            </button>
+          </div>
         </article>
       </div>
     </Transition>
@@ -682,6 +876,59 @@ watch([query, activeTag], () => {
   margin: 0 0 4px;
 }
 
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.share-status {
+  margin: 0 0 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.share-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+}
+
+.cached-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.cached-notice p {
+  margin: 0;
+}
+
+.dialog-state {
+  min-height: 80px;
+  padding: 12px 0;
+}
+
+.dialog-state p {
+  margin: 0 0 12px;
+}
+
 .dialog :deep(.md-body) {
   margin-top: 14px;
 }
@@ -706,6 +953,26 @@ watch([query, activeTag], () => {
 
   .latest-body {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .overlay {
+    padding: 16px;
+  }
+
+  .dialog {
+    max-height: calc(100dvh - 32px);
+    padding: 18px;
+  }
+
+  .dialog-head {
+    flex-direction: column;
+  }
+
+  .dialog-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>

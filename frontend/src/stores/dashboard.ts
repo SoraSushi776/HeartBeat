@@ -36,6 +36,7 @@ const NOTICE_TTL_MS = 15_000
 export class DashboardStore {
   readonly status = shallowRef<StatusData | null>(null)
   readonly diaries = ref<Diary[]>([])
+  readonly diariesAreDemo = ref(false)
   readonly friends = ref<FriendLink[]>([])
   readonly messages = ref<Message[]>([])
   readonly github = shallowRef<GithubData | null>(null)
@@ -129,8 +130,10 @@ export class DashboardStore {
     try {
       const list = await fetchDiaries()
       this.diaries.value = list.items
+      this.diariesAreDemo.value = false
     } catch {
       this.diaries.value = demoDiaries()
+      this.diariesAreDemo.value = true
     }
   }
 

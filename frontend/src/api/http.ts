@@ -1,5 +1,6 @@
 import type {
   ApiEnvelope,
+  Diary,
   DiaryList,
   FriendLink,
   GithubData,
@@ -8,6 +9,14 @@ import type {
   SiteInfo,
   StatusData,
 } from "../types/protocol"
+
+/** 带 HTTP 状态码的接口错误。 */
+export class ApiRequestError extends Error {
+  /** 创建带状态码的接口错误。 */
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
 
 /** 请求 JSON 接口并解包 data，失败时抛错 */
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -18,7 +27,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const body = (await response.json()) as ApiEnvelope<T>
   if (!response.ok || !body.ok || body.data === undefined) {
     const message = body.error?.message ?? `request failed: ${path}`
-    throw new Error(message)
+    throw new ApiRequestError(message, response.status)
   }
   return body.data
 }
@@ -32,6 +41,11 @@ export function fetchStatus(clientId?: string): Promise<StatusData> {
 /** 拉取日记分页列表 */
 export function fetchDiaries(limit = 50, offset = 0): Promise<DiaryList> {
   return requestJson<DiaryList>(`/api/v1/diaries?limit=${limit}&offset=${offset}`)
+}
+
+/** 按 id 拉取单篇日记。 */
+export function fetchDiary(id: number): Promise<Diary> {
+  return requestJson<Diary>(`/api/v1/diaries/${id}`)
 }
 
 /** 拉取友情链接列表 */

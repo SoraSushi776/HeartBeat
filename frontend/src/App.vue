@@ -89,7 +89,7 @@ onMounted(() => {
           :key="item.name"
           type="button"
           class="tab"
-          :class="{ 'is-active': route.name === item.name || route.path === item.path }"
+          :class="{ 'is-active': route.path === item.path || route.path.startsWith(`${item.path}/`) }"
           @click="go(item.path)"
         >
           {{ item.title }}
